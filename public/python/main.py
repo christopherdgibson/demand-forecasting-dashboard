@@ -1,19 +1,16 @@
-import numpy as np
 import pandas as pd
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
-# 1. Fetch public dataset (e.g., FRED US Retail Sales)
-# url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
-
-
 # Global cache for the fitted model instance and last historical data
-_fitted_model = None
-_last_historical = None
+STATE = {
+    "model": None,
+    "last_historical": None
+}
 
+# Fetch public dataset (e.g., FRED US Retail Sales)
+# url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
 def fit_model(filepath="RSXFSN.csv"):
     """Runs data loading and model fitting (Expensive step — run once)."""
-    global _fitted_model, _last_historical
-
     df = pd.read_csv(filepath)
     df['observation_date'] = pd.to_datetime(df['observation_date'])
     df.set_index('observation_date', inplace=True)
@@ -30,8 +27,8 @@ def fit_model(filepath="RSXFSN.csv"):
         seasonal_periods=12
     ).fit()
 
-    _fitted_model = model
-    _last_historical = {
+    STATE["model"] = model
+    STATE["last_historical"] = {
         "date": str(df.index[-1].date()),
         "value": float(df['sales'].iloc[-1])
     }
@@ -50,19 +47,17 @@ def fit_model(filepath="RSXFSN.csv"):
 
 def generate_forecast(forecast_steps=12):
     """Generates future periods from the cached model (Fast step — run on slider change)."""
-    global _fitted_model, _last_historical
-
-    if _fitted_model is None:
+    if STATE["model"] is None:
         raise ValueError("Model must be fitted before calling generate_forecast.")
 
-    forecast = _fitted_model.forecast(steps=int(forecast_steps))
+    forecast = STATE["model"].forecast(steps=int(forecast_steps))
 
     # Overlap point (start forecast line from last historical point)
     forecast_data = [
         {
-            "date": _last_historical["date"],
+            "date": STATE["last_historical"]["date"],
             "historical": None,
-            "forecast": _last_historical["value"]
+            "forecast": STATE["last_historical"]["value"]
         }
     ]
 

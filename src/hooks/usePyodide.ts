@@ -1,4 +1,4 @@
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { DemandProps } from '../types';
 
 interface PyFunctionProps {
@@ -10,10 +10,16 @@ export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
   const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const isInitializingRef = useRef(false);
   const base = import.meta.env.BASE_URL;
 
   // 1. Initialize Pyodide WASM Runtime & Load Data
   useEffect(() => {
+    // If already initializing or initialized, do nothing
+    if (isInitializingRef.current) return;
+    isInitializingRef.current = true;
+    
     async function initPyodide() {
       try {
         const py = await window.loadPyodide();

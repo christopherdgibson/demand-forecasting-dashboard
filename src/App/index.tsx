@@ -16,9 +16,9 @@ export default function App() {
 
   // Load and fit model on initial mount
   useEffect(() => {
-    console.log('useEffect');
+    if (isLoading) return;
     runForecast(inputs);
-  }, []);
+  }, [isLoading]);
 
   async function runForecast({filepath, forecast_steps}: ForecastProps): Promise<void> {
     setInputs({filepath, forecast_steps})

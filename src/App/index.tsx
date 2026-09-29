@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import Controls from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { usePyodide } from '../hooks/usePyodide';
+import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import type { DemandProps, ForecastProps } from '../types';
 import styles from './App.module.css';
 
@@ -12,7 +13,10 @@ export default function App() {
   const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, forecast_steps: DEFAULT_FORECAST_STEPS});
   const [results, setResults] = useState<Array<DemandProps> | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const { isLoading, fitModel, updateForecast, historicalData } = usePyodide();
+  const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
+
+  const { isLoading, fitModel, updateForecast } = usePyodide();
+  // const { isLoading, fitModel, updateForecast } = usePyodideWorker();
 
   // Load and fit model on initial mount
   useEffect(() => {
@@ -23,6 +27,7 @@ export default function App() {
   async function runForecast({filepath, forecast_steps}: ForecastProps): Promise<void> {
     setInputs({filepath, forecast_steps})
     const historical = await fitModel(filepath);
+    setHistoricalData(historical);
     const forecast = await updateForecast(forecast_steps);
     if (historical && forecast) {
       setResults([...historical, ...forecast]);

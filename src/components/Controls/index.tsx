@@ -12,7 +12,8 @@ interface ControlsProps {
 export default function Controls({inputs, onDatasetChange, onForecastChange, onRunForecast, isRunning}: ControlsProps) {
   const handleInputsChange = <F extends keyof ForecastProps> (
     field: F,
-    value: ForecastProps[F]
+    value: ForecastProps[F],
+    minValue?: number
   ) => {
     if (field == "filepath") {
       onDatasetChange({
@@ -20,6 +21,9 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
         [field]: value,
       });
     } else {
+      if (minValue && typeof(value) == 'number' && value < minValue){
+        return;
+      }
       onForecastChange({
         ...inputs,
           [field]: value,
@@ -41,15 +45,17 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
             <span>Data Source</span>
             <span className={styles.hint}>Input Dataset</span>
           </label>
-          <input
-            type="string"
+          <select
             className={styles.input}
-            min={0}
             value={inputs.filepath}
             // disabled={isRunning}
             disabled={true}
             onChange={(e) => handleInputsChange('filepath', e.target.value)}
-          />
+          >
+            <option value="RSXFSN.csv">FRED Retail Data</option>
+            <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+          </select>
         </div>
 
         {/* Forecast Steps */}
@@ -61,9 +67,10 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
           <input
             type="number"
             className={styles.input}
+            min={1}
             value={inputs.forecast_steps}
             disabled={isRunning}
-            onChange={(e) => handleInputsChange('forecast_steps', Number(e.target.value))}
+            onChange={(e) => handleInputsChange('forecast_steps', Number(e.target.value), 1)}
           />
         </div>
       </div>

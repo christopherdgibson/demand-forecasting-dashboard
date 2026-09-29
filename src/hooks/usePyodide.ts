@@ -8,7 +8,6 @@ interface PyFunctionProps {
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
-  const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   const isInitializingRef = useRef(false);
@@ -106,10 +105,6 @@ export function usePyodide() {
         args: [filepath],
       });
 
-      if (historical) {
-        setHistoricalData(historical);
-      }
-
       return historical;
     },
     [callPyFunction]
@@ -126,5 +121,5 @@ export function usePyodide() {
     [callPyFunction]
   );
 
-  return { isLoading, fitModel, updateForecast, historicalData };
+  return { isLoading, fitModel, updateForecast };
 }

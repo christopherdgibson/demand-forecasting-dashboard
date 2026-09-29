@@ -1,5 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import type { DemandProps } from '../types';
+
+interface PyFunctionProps {
+  fnName: string;
+  args?: any[];
+}
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
@@ -7,6 +12,7 @@ export function usePyodide() {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const base = import.meta.env.BASE_URL;
 
+  // 1. Initialize Pyodide WASM Runtime & Load Data
   useEffect(() => {
     async function initPyodide() {
       try {
@@ -42,68 +48,77 @@ export function usePyodide() {
     initPyodide();
   }, []);
 
-  // 1. Initial fit call
-  const fitModel = async (filepath: string = 'RSXFSN.csv'): Promise<Array<DemandProps> | null> => {
-    if (!pyodide) return null;
-    if (historicalData === null) return null; // Allow fitting before run
+  // 2. Centralized Pyodide Invocation Wrapper
+  const callPyFunction = useCallback(
+    async ({ fnName, args = [] }: PyFunctionProps): Promise<Array<DemandProps> | null> => {
+      if (!pyodide) {
+        console.warn(`Attempted to call ${fnName} before Pyodide finished loading.`);
+        return null;
+      }
 
-    let pyProxy: any = null;
-    let fitFn: any = null;
-    
-    try{
-      // 1. Fetch function reference from Python global scope
-      fitFn = pyodide.globals.get('fit_model');
+      let pyFunction: any = null;
+      let pyProxy: any = null;
 
-      // 2. Invoke function directly with typed JavaScript parameters
-      pyProxy = fitFn(filepath);
+      try {
+        // Fetch function reference from Python global namespace
+        pyFunction = pyodide.globals.get(fnName);
 
-      // 3. Convert Pyodide dict/proxy object to native JavaScript object
-      const historical = pyProxy.toJs({ dict_converter: Object.fromEntries });
+        if (!pyFunction) {
+          throw new Error(`Python function '${fnName}' was not found in global scope.`);
+        }
 
-      setHistoricalData(historical);
+        pyProxy = pyFunction(...args);
+
+        // Convert Pyodide Proxy object to native JavaScript Types
+        const jsResult = pyProxy.toJs({ dict_converter: Object.fromEntries });
+
+        return jsResult;
+      } catch (error) {
+        console.error(`Error executing Python function '${fnName}':`, error);
+        throw error;
+      } finally {
+        // Clean up WASM proxies to prevent memory leaks
+        if (pyProxy && typeof pyProxy.destroy === 'function') pyProxy.destroy();
+        if (pyFunction && typeof pyFunction.destroy === 'function') pyFunction.destroy();
+
+        // Run Python Garbage Collection
+        try {
+          pyodide.runPython('import gc; gc.collect()');
+        } catch (gcErr) {
+          console.warn('Garbage collection trigger failed:', gcErr);
+        }
+      }
+    },
+    [pyodide]
+  );
+
+  // 3. Public API: Initial Model Fit
+  const fitModel = useCallback(
+    async (filepath: string = 'RSXFSN.csv'): Promise<Array<DemandProps> | null> => {
+      const historical = await callPyFunction({
+        fnName: 'fit_model',
+        args: [filepath],
+      });
+
+      if (historical) {
+        setHistoricalData(historical);
+      }
+
       return historical;
-    } catch (error) {
-      console.error('Python execution error:', error);
-      throw error;
-    } finally {
-      // 4. Destroy proxy to prevent WASM memory leaks
-      if (pyProxy) pyProxy.destroy();
-      if (fitFn) fitFn.destroy();
+    },
+    [callPyFunction]
+  );
 
-      // Force Python GC inside Pyodide runtime
-      pyodide.runPython(`
-        import gc
-        gc.collect()
-      `);
-    }
-  };
-
-  // 2. Reactive recalculation call
-  const updateForecast = async (steps: number): Promise<Array<DemandProps> | null> => {
-    if (!pyodide) return null;
-
-    let pyProxy: any = null;
-    let forecastFn: any = null;
-
-    try {
-      forecastFn = pyodide.globals.get('generate_forecast');
-      pyProxy = forecastFn(steps);
-      const forecast = pyProxy.toJs({ dict_converter: Object.fromEntries });
-
-      return forecast;
-    } catch (error) {
-      console.error('Python execution error:', error);
-      throw error;
-    } finally {
-      if (pyProxy) pyProxy.destroy();
-      if (forecastFn) forecastFn.destroy();
-
-      pyodide.runPython(`
-        import gc
-        gc.collect()
-      `);
-    }    
-  };
+  // 4. Public API: Reactive Forecast Horizon Update
+  const updateForecast = useCallback(
+    async (steps: number): Promise<Array<DemandProps> | null> => {
+      return await callPyFunction({
+        fnName: 'generate_forecast',
+        args: [steps],
+      });
+    },
+    [callPyFunction]
+  );
 
   return { isLoading, fitModel, updateForecast, historicalData };
 }

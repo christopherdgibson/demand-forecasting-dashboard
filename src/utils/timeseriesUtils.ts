@@ -1,4 +1,19 @@
-import type { DemandProps, UnifiedChartPoint } from "../types";
+export interface DemandProps {
+  date: string;
+  value: number;
+  value_historical: number;
+}
+
+export interface UnifiedChartPoint {
+  date: string;
+  historical: number | null;
+  forecast: number | null;
+}
+
+export interface ForecastResults {
+  historical: Array<DemandProps>
+  forecast: Array<DemandProps>;
+}
 
 export function combineHistoricalAndForecast(
   historical: DemandProps[],

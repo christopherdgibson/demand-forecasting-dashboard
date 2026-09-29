@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import type { ForecastProps, ForecastResults } from '../types';
+import type { DemandProps } from '../types';
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
+  const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const base = import.meta.env.BASE_URL;
 
@@ -21,11 +22,11 @@ export function usePyodide() {
         //py.FS.writeFile('config.py', configSrc);
 
         // Fetch CSV file and write it to MEMFS
-      const csvResponse = await fetch(`${base}data/inputs/RSXFSN.csv`);
-      const csvData = await csvResponse.text();
+        const csvResponse = await fetch(`${base}data/inputs/RSXFSN.csv`);
+        const csvData = await csvResponse.text();
 
-      // Write file into Pyodide's virtual filesystem root as 'RSXFSN.csv'
-      py.FS.writeFile('RSXFSN.csv', csvData);
+        // Write file into Pyodide's virtual filesystem root as 'RSXFSN.csv'
+        py.FS.writeFile('RSXFSN.csv', csvData);
 
         // Execute main.py once to load functions into Python's global scope
         await py.runPythonAsync(mainSrc);
@@ -41,30 +42,33 @@ export function usePyodide() {
     initPyodide();
   }, []);
 
-const runForecast = async ({file_path = "RSXFSN.csv", forecast_steps = 12}: ForecastProps): Promise<ForecastResults | null> => {
+  // 1. Initial fit call
+  const fitModel = async (filepath: string = 'RSXFSN.csv'): Promise<Array<DemandProps> | null> => {
     if (!pyodide) return null;
+    if (historicalData === null) return null; // Allow fitting before run
 
-    let forecastFn: any = null;
     let pyProxy: any = null;
-
-    try {
+    let fitFn: any = null;
+    
+    try{
       // 1. Fetch function reference from Python global scope
-      forecastFn = pyodide.globals.get('run_demand_forecast');
+      fitFn = pyodide.globals.get('fit_model');
 
       // 2. Invoke function directly with typed JavaScript parameters
-      pyProxy = forecastFn(file_path, forecast_steps);
+      pyProxy = fitFn(filepath);
 
       // 3. Convert Pyodide dict/proxy object to native JavaScript object
-      const jsResult = pyProxy.toJs({ dict_converter: Object.fromEntries }) as ForecastResults;
+      const historical = pyProxy.toJs({ dict_converter: Object.fromEntries });
 
-      return jsResult;
+      setHistoricalData(historical);
+      return historical;
     } catch (error) {
       console.error('Python execution error:', error);
       throw error;
     } finally {
       // 4. Destroy proxy to prevent WASM memory leaks
       if (pyProxy) pyProxy.destroy();
-      if (forecastFn) forecastFn.destroy();
+      if (fitFn) fitFn.destroy();
 
       // Force Python GC inside Pyodide runtime
       pyodide.runPython(`
@@ -74,5 +78,32 @@ const runForecast = async ({file_path = "RSXFSN.csv", forecast_steps = 12}: Fore
     }
   };
 
-  return { isLoading, runForecast };
+  // 2. Reactive recalculation call
+  const updateForecast = async (steps: number): Promise<Array<DemandProps> | null> => {
+    if (!pyodide) return null;
+
+    let pyProxy: any = null;
+    let forecastFn: any = null;
+
+    try {
+      forecastFn = pyodide.globals.get('generate_forecast');
+      pyProxy = forecastFn(steps);
+      const forecast = pyProxy.toJs({ dict_converter: Object.fromEntries });
+
+      return forecast;
+    } catch (error) {
+      console.error('Python execution error:', error);
+      throw error;
+    } finally {
+      if (pyProxy) pyProxy.destroy();
+      if (forecastFn) forecastFn.destroy();
+
+      pyodide.runPython(`
+        import gc
+        gc.collect()
+      `);
+    }    
+  };
+
+  return { isLoading, fitModel, updateForecast, historicalData };
 }

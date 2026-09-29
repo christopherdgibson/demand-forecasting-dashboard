@@ -13,17 +13,16 @@ import {
 
 import { useMemo } from 'react';
 
-import type { DemandProps, ForecastResults, UnifiedChartPoint } from '../../types';
+import type { DemandProps } from '../../types';
 import styles from './ForecastChart.module.css';
 
 import { combineHistoricalAndForecast } from '../../utils/timeseriesUtils';
 
 interface ForecastChartProps {
-  historicalData: Array<DemandProps>;
-  forecastData: Array<DemandProps>;
+  chartData: Array<DemandProps>;
   title?: string;
-  dataKey1: keyof UnifiedChartPoint;
-  dataKey2: keyof UnifiedChartPoint;
+  dataKey1: keyof DemandProps;
+  dataKey2: keyof DemandProps;
   name1: string;
   name2: string;
   formatType?: string;
@@ -32,14 +31,11 @@ interface ForecastChartProps {
 }
 
 export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
-  historicalData, forecastData, dataKey1, dataKey2, name1, name2, 
+  chartData, dataKey1, dataKey2, name1, name2, 
     formatType = "currency", xLabel, yLabel 
 }: ForecastChartProps) {
-  const combinedData = useMemo(() => {
-    return combineHistoricalAndForecast(historicalData, forecastData);
-  }, [historicalData, forecastData]);
 
-  if (combinedData.length === 0) return null;
+  if (chartData.length === 0) return null;
 
   // console.log('combinedData: ', combinedData);
 
@@ -49,7 +45,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
       
       <div className={styles.chartContainer}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={combinedData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               dataKey="date"

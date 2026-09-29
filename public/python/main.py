@@ -5,8 +5,16 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 # 1. Fetch public dataset (e.g., FRED US Retail Sales)
 # url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
 
-def run_demand_forecast(file_path: str = "RSXFSN.csv", forecast_steps: int = 12):
-    df = pd.read_csv(file_path)
+
+# Global cache for the fitted model instance and last historical data
+_fitted_model = None
+_last_historical = None
+
+def fit_model(filepath="RSXFSN.csv"):
+    """Runs data loading and model fitting (Expensive step — run once)."""
+    global _fitted_model, _last_historical
+
+    df = pd.read_csv(filepath)
     df['observation_date'] = pd.to_datetime(df['observation_date'])
     df.set_index('observation_date', inplace=True)
     df = df.rename(columns={'RSXFSN': 'sales'}).dropna()
@@ -14,7 +22,7 @@ def run_demand_forecast(file_path: str = "RSXFSN.csv", forecast_steps: int = 12)
     # Resample to monthly frequency to satisfy statsmodels requirement
     df = df.asfreq('MS')
 
-    # 2. Fit Holt-Winters Exponential Smoothing Model
+    # Fit Holt-Winters Exponential Smoothing Model
     model = ExponentialSmoothing(
         df['sales'],
         trend='add',
@@ -22,14 +30,50 @@ def run_demand_forecast(file_path: str = "RSXFSN.csv", forecast_steps: int = 12)
         seasonal_periods=12
     ).fit()
 
-    # 3. Forecast future periods (e.g., 12 months ahead)
-    steps = forecast_steps
-    forecast = model.forecast(steps=steps)
+    _fitted_model = model
+    _last_historical = {
+        "date": str(df.index[-1].date()),
+        "value": float(df['sales'].iloc[-1])
+    }
 
-    # 4. Format output as JSON for front-end consumption
-    results = {
-        "historical": [{"date": str(d.date()), "value": float(v)} for d, v in zip(df.index, df['sales'])],
-        "forecast": [{"date": str(d.date()), "value": float(v)} for d, v in zip(forecast.index, forecast)]
-    }    
+    # Return historical series for initial render
+    historical_data = [
+        {
+            "date": str(d.date()),
+            "historical": float(v),
+            "forecast": None
+        }
+        for d, v in zip(df.index, df['sales'])
+    ]
 
-    return results
+    return historical_data
+
+def generate_forecast(forecast_steps=12):
+    """Generates future periods from the cached model (Fast step — run on slider change)."""
+    global _fitted_model, _last_historical
+
+    if _fitted_model is None:
+        raise ValueError("Model must be fitted before calling generate_forecast.")
+
+    forecast = _fitted_model.forecast(steps=int(forecast_steps))
+
+    # Overlap point (start forecast line from last historical point)
+    forecast_data = [
+        {
+            "date": _last_historical["date"],
+            "historical": None,
+            "forecast": _last_historical["value"]
+        }
+    ]
+
+    # Future forecast points
+    forecast_data.extend([
+        {
+            "date": str(d.date()),
+            "historical": None,
+            "forecast": float(v)
+        }
+        for d, v in zip(forecast.index, forecast)
+    ])
+
+    return forecast_data

@@ -3,20 +3,28 @@ import type { ForecastProps } from '../../types';
 
 interface ControlsProps {
   inputs: ForecastProps;
-  onChange: (updatedParams: ForecastProps) => void;
+  onDatasetChange: (updatedParams: ForecastProps) => void;
+  onForecastChange: (updatedParams: ForecastProps) => void;
   onRunForecast: () => void;
   isRunning: boolean;
 }
 
-export default function Controls({inputs, onChange, onRunForecast, isRunning}: ControlsProps) {
+export default function Controls({inputs, onDatasetChange, onForecastChange, onRunForecast, isRunning}: ControlsProps) {
   const handleInputsChange = <F extends keyof ForecastProps> (
     field: F,
     value: ForecastProps[F]
   ) => {
-    onChange({
+    if (field == "filepath") {
+      onDatasetChange({
       ...inputs,
         [field]: value,
       });
+    } else {
+      onForecastChange({
+        ...inputs,
+          [field]: value,
+        });
+    }
   };
 
   return (
@@ -37,9 +45,10 @@ export default function Controls({inputs, onChange, onRunForecast, isRunning}: C
             type="string"
             className={styles.input}
             min={0}
-            value={inputs.file_path}
-            disabled={isRunning}
-            onChange={(e) => handleInputsChange('file_path', e.target.value)}
+            value={inputs.filepath}
+            // disabled={isRunning}
+            disabled={true}
+            onChange={(e) => handleInputsChange('filepath', e.target.value)}
           />
         </div>
 

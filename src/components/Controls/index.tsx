@@ -77,7 +77,7 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
         <div className={styles.fieldGroup}>
           <label className={styles.label}>
             <span>Confidence Interval (&alpha;)</span>
-            <span className={styles.hint}>0.01 - 1.0</span>
+            <span className={styles.hint}>0.001 - 1.0</span>
           </label>
           <input
             type="number"

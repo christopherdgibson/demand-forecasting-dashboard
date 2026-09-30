@@ -21,7 +21,7 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
         [field]: value,
       });
     } else {
-      if (minValue && typeof(value) == 'number' && value < minValue){
+      if (minValue !== undefined && typeof(value) == 'number' && value < minValue){
         return;
       }
       onForecastChange({
@@ -68,9 +68,26 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
             type="number"
             className={styles.input}
             min={1}
-            value={inputs.forecast_steps}
+            value={inputs.steps}
             disabled={isRunning}
-            onChange={(e) => handleInputsChange('forecast_steps', Number(e.target.value), 1)}
+            onChange={(e) => handleInputsChange('steps', Number(e.target.value), 1)}
+          />
+        </div>
+        {/* Confidence Interval */}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label}>
+            <span>Confidence Interval (&alpha;)</span>
+            <span className={styles.hint}>0.01 - 1.0</span>
+          </label>
+          <input
+            type="number"
+            className={styles.input}
+            min={0.0}
+            max={1.0}
+            step={0.001}
+            value={inputs.alpha}
+            disabled={isRunning}
+            onChange={(e) => handleInputsChange('alpha', Number(e.target.value), 0)}
           />
         </div>
       </div>

@@ -3,14 +3,15 @@ import Controls from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
-import type { DemandProps, ForecastProps } from '../types';
+import type { DemandProps, ForecastInputs, ForecastProps } from '../types';
 import styles from './App.module.css';
 
 const DEFAULT_FILE_PATH = 'RSXFSN.csv';
 const DEFAULT_FORECAST_STEPS = 12;
+const DEFAULT_ALPHA = 0.05;
 
 export default function App() {
-  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, forecast_steps: DEFAULT_FORECAST_STEPS});
+  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
   const [results, setResults] = useState<Array<DemandProps> | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
@@ -24,21 +25,21 @@ export default function App() {
     runForecast(inputs);
   }, [isLoading]);
 
-  async function runForecast({filepath, forecast_steps}: ForecastProps): Promise<void> {
-    setInputs({filepath, forecast_steps})
+  async function runForecast({filepath, steps, alpha}: ForecastProps): Promise<void> {
+    setInputs({filepath, steps, alpha})
     const historical = await fitModel(filepath);
     setHistoricalData(historical);
-    const forecast = await updateForecast(forecast_steps);
+    const forecast = await updateForecast({steps, alpha});
     if (historical && forecast) {
       setResults([...historical, ...forecast]);
     }
   }
 
   // Update chart input changes moves (No refitting)
-  const handleForecastChange = async ({filepath, forecast_steps}: ForecastProps): Promise<void> => {
-    setInputs({...inputs, forecast_steps});
+  const handleForecastChange = async ({steps, alpha}: ForecastInputs): Promise<void> => {
+    setInputs({...inputs, steps, alpha});
     if (!historicalData) return;
-    const forecast = await updateForecast(forecast_steps);
+    const forecast = await updateForecast({steps, alpha});
     if (forecast) {
       setResults([...historicalData, ...forecast]);
     }
@@ -80,10 +81,11 @@ export default function App() {
         <>
           <ForecastChart
             chartData={results}
-            dataKey1={"historical"}
-            dataKey2={"forecast"}
+            dataHistorical={"historical"}
+            dataForecast={"forecast"}
             name1={"Historical"}
             name2={"Forecast"}
+            nameCI={`${Math.round((1-inputs.alpha)*10000)/100}% Confidence Band`}
             formatType={"currency"}
             xLabel={'Date'}
             yLabel={'Demand'}

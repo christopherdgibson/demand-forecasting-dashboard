@@ -2,11 +2,17 @@ export interface DemandProps {
   date: string;
   historical: number | null;
   forecast: number | null;
+  ci_lower: number | null;
+  ci_upper: number | null;
 }
 
-export interface ForecastProps {
+export interface ForecastInputs {
+  steps: number;
+  alpha: number;
+}
+
+export interface ForecastProps extends ForecastInputs {
   filepath: string;
-  forecast_steps: number;
 }
 
 declare global {

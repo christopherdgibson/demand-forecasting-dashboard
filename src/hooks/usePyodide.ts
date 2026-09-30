@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DemandProps } from '../types';
+import type { DemandProps, ForecastInputs } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
@@ -112,10 +112,10 @@ export function usePyodide() {
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecast = useCallback(
-    async (steps: number): Promise<Array<DemandProps> | null> => {
+    async ({steps, alpha}: ForecastInputs): Promise<Array<DemandProps> | null> => {
       return await callPyFunction({
         fnName: 'generate_forecast',
-        args: [steps],
+        args: [steps, alpha],
       });
     },
     [callPyFunction]

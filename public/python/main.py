@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from statsmodels.tsa.holtwinters import ExponentialSmoothing
 
@@ -38,37 +39,60 @@ def fit_model(filepath="RSXFSN.csv"):
         {
             "date": str(d.date()),
             "historical": float(v),
-            "forecast": None
+            "forecast": None,
+            "ci_lower": None,
+            "ci_upper": None,
         }
         for d, v in zip(df.index, df['sales'])
     ]
 
     return historical_data
 
-def generate_forecast(forecast_steps=12):
-    """Generates future periods from the cached model (Fast step — run on slider change)."""
+def generate_forecast(forecast_steps=12, alpha=0.05):
+    """Generates forecast and 95% confidence intervals (alpha=0.05)."""
     if STATE["model"] is None:
         raise ValueError("Model must be fitted before calling generate_forecast.")
 
-    forecast = STATE["model"].forecast(steps=int(forecast_steps))
+    model = STATE["model"]
+    steps = int(forecast_steps)
 
-    # Overlap point (start forecast line from last historical point)
+    # 1. Get prediction results object
+    forecast = model.forecast(steps=steps)
+    # 2. Extract confidence intervals (default alpha=0.05 for 95% CI)
+    residuals = model.resid
+    sigma_res = np.std(residuals)
+
+    # z_score = 1.96 for 95%, 1.645 for 90%, 1.282 for 80%
+    z_score = 1.96
+
+    last_val = STATE["last_historical"]["value"]
+    last_date = STATE["last_historical"]["date"]
+
+    # Overlap point: anchor lower and upper bounds to last historical value
     forecast_data = [
         {
-            "date": STATE["last_historical"]["date"],
+            "date": last_date,
             "historical": None,
-            "forecast": STATE["last_historical"]["value"]
+            "forecast": last_val,
+            "ci_lower": last_val,
+            "ci_upper": last_val,
         }
     ]
 
-    # Future forecast points
-    forecast_data.extend([
-        {
-            "date": str(d.date()),
+    # 3. Calculate horizon-dependent error bounds
+    for i, (date_idx, mean_val) in enumerate(forecast.items(), start=1):
+        # Error variance grows with forecast step h
+        margin_of_error = z_score * sigma_res * np.sqrt(i)
+        
+        lower_val = mean_val - margin_of_error
+        upper_val = mean_val + margin_of_error
+
+        forecast_data.append({
+            "date": str(date_idx.date()),
             "historical": None,
-            "forecast": float(v)
-        }
-        for d, v in zip(forecast.index, forecast)
-    ])
+            "forecast": round(float(mean_val), 2),
+            "ci_lower": round(float(lower_val), 2),
+            "ci_upper": round(float(upper_val), 2),
+        })
 
     return forecast_data

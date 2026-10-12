@@ -1,4 +1,4 @@
-export type ModelType = 'ets' | 'sarimax';
+export type ModelType = 'ets' | 'sarimax' | 'theta';
 
 export interface DemandProps {
   date: string;
@@ -20,6 +20,7 @@ export interface ModelResults {
   metrics: {
     ets: ModelMetrics;
     sarimax: ModelMetrics;
+    theta: ModelMetrics;
   }
 }
 

@@ -72,7 +72,7 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
           >
             <option value="ets">ETS</option>
             <option value="sarimax">SARIMAX</option>
-            <option value="option3">Option 3</option>
+            <option value="theta">Theta</option>
           </select>
         </div>
 

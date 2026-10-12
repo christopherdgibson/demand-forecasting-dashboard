@@ -4,7 +4,8 @@ export function roundNumber(input: number, digits: number): number {
 }
 
 export function formatNumber(value: number) {
-  return numberFormatter.format(value);
+    if (typeof value !== 'number') return null;
+    return numberFormatter.format(value);
 }
 
 const numberFormatter = new Intl.NumberFormat('en-UK', {
@@ -14,6 +15,7 @@ const numberFormatter = new Intl.NumberFormat('en-UK', {
 });
 
 export function formatPercentage(value: number) {
+    if (typeof value !== 'number') return null;
   return percentageFormatter.format(value);
 }
 

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 from statsmodels.tsa.exponential_smoothing.ets import ETSModel
 from statsmodels.tsa.statespace.sarimax import SARIMAX
+from statsmodels.tsa.forecasting.theta import ThetaModel
 from typing import Any, Tuple
 
 # Global cache for the fitted model instance and last historical data
@@ -39,7 +40,7 @@ def fit_models(filepath="RSXFSN.csv"):
         STATE["metrics"]["ets"] = {
             "aic": round(float(ets_fit.aic), 2),
             "bic": round(float(ets_fit.bic), 2),
-            "mape": round(float(np.mean(np.abs(ets_resid / actuals)) * 100), 2),
+            "mape": round(float(np.mean(np.abs(ets_resid / actuals))), 4),
             "rmse": round(float(np.sqrt(np.mean(ets_resid ** 2))), 2)
         }
     except Exception as e:
@@ -55,12 +56,30 @@ def fit_models(filepath="RSXFSN.csv"):
         STATE["metrics"]["sarimax"] = {
             "aic": round(float(sarimax_fit.aic), 2),
             "bic": round(float(sarimax_fit.bic), 2),
-            "mape": round(float(np.mean(np.abs(sarimax_resid / actuals)) * 100), 2),
+            "mape": round(float(np.mean(np.abs(sarimax_resid / actuals))), 4),
             "rmse": round(float(np.sqrt(np.mean(sarimax_resid ** 2))), 2)
         }
 
     except Exception as e:
         STATE["models"]["sarimax"] = None
+
+    # 3. Fit Theta Model
+    try:
+        theta_fit = ThetaModel(actuals, period=12).fit()
+        STATE["models"]["theta"] = theta_fit
+        
+        # Extract metrics or residuals
+        theta_rmse = float(np.sqrt(theta_fit.sigma2))
+        STATE["metrics"]["theta"] = {
+            "aic": "N/A", # Theta model uses alternative error criteria
+            "bic": "N/A",
+            "mape": "N/A",  # Omit or approximate since fitted values aren't stored
+            "rmse": round(theta_rmse, 2)
+        }
+        
+    except Exception as e:
+        print('Exception on Theta model:', e)
+        STATE["models"]["theta"] = None
 
     # Return historical series for initial render
     historical_data = [
@@ -100,15 +119,21 @@ def generate_forecast(modelType='ets', forecast_steps=12, alpha=0.05):
     forecast_start = pd.to_datetime(last_date)+pd.DateOffset(months=1)
     forecast_end = pd.to_datetime(last_date)+pd.DateOffset(months=steps)
 
-    # 1. Get prediction results object
-    pred = model.get_prediction(start=forecast_start, end=forecast_end)
-
-    # # 2. Extract confidence intervals (default alpha=0.05 for 95% CI)
+    # Get prediction results object and 
+    #   extract confidence intervals (default alpha=0.05 for 95% CI)
     if modelType == 'ets':
+        pred = model.get_prediction(start=forecast_start, end=forecast_end)
+        mean_series = pred.predicted_mean
         (ci_lower, ci_upper) = get_ets_ci(pred, alpha)
 
     elif modelType == 'sarimax':
+        pred = model.get_prediction(start=forecast_start, end=forecast_end)
+        mean_series = pred.predicted_mean
         (ci_lower, ci_upper) = get_sarimax_ci(pred, alpha)
+
+    elif modelType == 'theta':
+        mean_series = model.forecast(steps=steps)
+        (ci_lower, ci_upper) = get_theta_ci(model, steps, alpha)
 
     else:
         raise ValueError(f"Unsupported demand model type: '{modelType}'")
@@ -117,8 +142,8 @@ def generate_forecast(modelType='ets', forecast_steps=12, alpha=0.05):
     
     # Append forecasted periods
     for i in range(steps):
-        date_str = str(pred.predicted_mean.index[i].date())
-        mean_val = float(pred.predicted_mean.iloc[i])
+        date_str = str(mean_series.index[i].date())
+        mean_val = float(mean_series.iloc[i])
         
         # Handle column naming variations in statsmodels conf_int output
         lower_val = float(ci_lower.iloc[i])
@@ -143,3 +168,7 @@ def get_ets_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:
 def get_sarimax_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:
     pred_ci = prediction.summary_frame(alpha=alpha)
     return pred_ci['mean_ci_lower'], pred_ci['mean_ci_upper']
+
+def get_theta_ci(model: Any, steps: int, alpha: float) -> Tuple[Any, Any]:
+    pred_ci = model.prediction_intervals(steps=steps, alpha=alpha)
+    return pred_ci['lower'], pred_ci['upper']

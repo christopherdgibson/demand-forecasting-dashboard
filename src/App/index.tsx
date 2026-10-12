@@ -4,7 +4,7 @@ import { ForecastChart } from '../components/ForecastChart';
 import { MetricsCard } from '../components/MetricsCard';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
-// import { roundNumber } from '../utils/numberUtils';
+import { roundNumber } from '../utils/numberUtils';
 import type { DemandProps, ForecastInputs, ForecastProps, ModelMetrics } from '../types';
 import styles from './App.module.css';
 
@@ -94,7 +94,7 @@ export default function App() {
           dataForecast={"forecast"}
           name1={"Historical"}
           name2={"Forecast"}
-          nameCI={`${Math.round((1-inputs.alpha)*10000)/100}% Confidence Band`}
+          nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
           formatType={"currency"}
           xLabel={'Date'}
           yLabel={'Demand'}

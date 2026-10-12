@@ -1,3 +1,5 @@
+import { formatNumber } from '../utils/numberUtils';
+
 import '../App/styles.css';
 import type { ModelMetrics } from '../types';
 
@@ -12,11 +14,11 @@ export function MetricsCard({ metrics }: MetricsCardProps) {
     <div className={'metrics-grid'}>
       <div className={'metrics-card'}>
         <span className={'metrics-label'}>AIC (Model Fit)</span>
-        <span className={'metrics-value'}>{metrics.aic}</span>
+        <span className={'metrics-value'}>{formatNumber(metrics.aic)}</span>
       </div>
       <div className={'metrics-card'}>
         <span className={'metrics-label'}>BIC (Complexity)</span>
-        <span className={'metrics-value'}>{metrics.bic}</span>
+        <span className={'metrics-value'}>{formatNumber(metrics.bic)}</span>
       </div>
       <div className={'metrics-card'}>
         <span className={'metrics-label'}>MAPE (Error %)</span>
@@ -24,7 +26,7 @@ export function MetricsCard({ metrics }: MetricsCardProps) {
       </div>
       <div className={'metrics-card'}>
         <span className={'metrics-label'}>RMSE (Root Mean Sq)</span>
-        <span className={'metrics-value'}>{metrics.rmse}</span>
+        <span className={'metrics-value'}>{formatNumber(metrics.rmse)}</span>
       </div>
     </div>
   );

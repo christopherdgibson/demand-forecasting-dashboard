@@ -20,7 +20,7 @@ export function formatCurrencyValue(value: number) {
   return currencyFormatter.format(value);
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
+const currencyFormatter = new Intl.NumberFormat('en-UK', {
     style: 'currency',
     currency: 'EUR',
     minimumFractionDigits: 2,

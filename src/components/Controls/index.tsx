@@ -1,5 +1,5 @@
 import styles from './Controls.module.css';
-import type { ForecastProps } from '../../types';
+import type { ForecastProps, ModelType } from '../../types';
 
 interface ControlsProps {
   inputs: ForecastProps;
@@ -54,6 +54,24 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
           >
             <option value="RSXFSN.csv">FRED Retail Data</option>
             <option value="option2">Option 2</option>
+            <option value="option3">Option 3</option>
+          </select>
+        </div>
+
+        {/* Forecast Type */}
+        <div className={styles.fieldGroup}>
+          <label className={styles.label}>
+            <span>Demand Model</span>
+            <span className={styles.hint}>Forecast Model</span>
+          </label>
+          <select
+            className={styles.input}
+            value={inputs.modelType}
+            disabled={isRunning}
+            onChange={(e) => handleInputsChange('modelType', e.target.value as ModelType)}
+          >
+            <option value="ets">ETS</option>
+            <option value="sarimax">SARIMAX</option>
             <option value="option3">Option 3</option>
           </select>
         </div>

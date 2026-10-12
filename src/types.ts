@@ -1,3 +1,5 @@
+export type ModelType = 'ets' | 'sarimax';
+
 export interface DemandProps {
   date: string;
   historical: number | null;
@@ -14,11 +16,15 @@ export interface ModelMetrics {
 }
 
 export interface ModelResults {
-  demand: Array<DemandProps>;
-  metrics: ModelMetrics;
+  data: Array<DemandProps>;
+  metrics: {
+    ets: ModelMetrics;
+    sarimax: ModelMetrics;
+  }
 }
 
 export interface ForecastInputs {
+  modelType: ModelType;
   steps: number;
   alpha: number;
 }

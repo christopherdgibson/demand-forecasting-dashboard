@@ -100,10 +100,10 @@ export function usePyodide() {
   );
 
   // 3. Public API: Initial Model Fit
-  const fitModel = useCallback(
+  const fitModels = useCallback(
     async (filepath: string = 'RSXFSN.csv'): Promise<ModelResults | null> => {
       const historical = await callPyFunction<ModelResults>({
-        fnName: 'fit_model',
+        fnName: 'fit_models',
         args: [filepath],
       });
 
@@ -113,14 +113,14 @@ export function usePyodide() {
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecast = useCallback(
-    async ({steps, alpha}: ForecastInputs): Promise<Array<DemandProps> | null> => {
+    async ({modelType, steps, alpha}: ForecastInputs): Promise<Array<DemandProps> | null> => {
       return await callPyFunction<Array<DemandProps>>({
         fnName: 'generate_forecast',
-        args: [steps, alpha],
+        args: [modelType, steps, alpha],
       });
     },
     [callPyFunction]
   );
 
-  return { isLoading, fitModel, updateForecast };
+  return { isLoading, fitModels, updateForecast };
 }

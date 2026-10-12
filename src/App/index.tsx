@@ -13,14 +13,17 @@ const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
 
 export default function App() {
-  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
+  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, modelType: 'ets', steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
   const [data, setData] = useState<Array<DemandProps> | null>(null);
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
+  const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
+  const [forecastMap, setForecastMap] = useState<Record<string, DemandProps[]>>({}); // For importing forecasts for all models
+  const [selectedModel, setSelectedModel] = useState<'ets' | 'sarimax'>('ets'); // For separaing model toggle from forecast update
 
-  const { isLoading, fitModel, updateForecast } = usePyodide();
-  // const { isLoading, fitModel, updateForecast } = usePyodideWorker();
+  const { isLoading, fitModels, updateForecast } = usePyodide();
+  // const { isLoading, fitModels, updateForecast } = usePyodideWorker();
 
   // Load and fit model on initial mount
   useEffect(() => {
@@ -28,24 +31,29 @@ export default function App() {
     runForecast(inputs);
   }, [isLoading]);
 
-  async function runForecast({filepath, steps, alpha}: ForecastProps): Promise<void> {
-    setInputs({filepath, steps, alpha})
-    const modelResults = await fitModel(filepath);
-    const historical = modelResults !== null ? modelResults['demand'] : null;
-    const modelMetrics = modelResults !== null ? modelResults['metrics'] : null;
+  async function runForecast({filepath, modelType, steps, alpha}: ForecastProps): Promise<void> {
+    setInputs({filepath, modelType, steps, alpha})
+    const modelResults = await fitModels(filepath);
+    const historical = modelResults !== null ? modelResults.data : null;
+    const modelMetrics = modelResults !== null ? modelResults.metrics : null;
     setHistoricalData(historical);
-    setMetrics(modelMetrics);
-    const forecast = await updateForecast({steps, alpha});
+    
+    if (modelMetrics) {
+      setMetricsMap(modelMetrics);
+      setMetrics(modelMetrics[modelType]);
+    }
+    const forecast = await updateForecast({modelType, steps, alpha});
     if (historical && forecast) {
       setData([...historical, ...forecast]);
     }
   }
 
   // Update chart input changes moves (No refitting)
-  const handleForecastChange = async ({steps, alpha}: ForecastInputs): Promise<void> => {
-    setInputs({...inputs, steps, alpha});
+  const handleForecastChange = async ({modelType, steps, alpha}: ForecastInputs): Promise<void> => {
+    setInputs({...inputs, modelType, steps, alpha});
     if (!historicalData) return;
-    const forecast = await updateForecast({steps, alpha});
+    setMetrics(metricsMap[modelType]);
+    const forecast = await updateForecast({modelType, steps, alpha});
     if (forecast) {
       setData([...historicalData, ...forecast]);
     }

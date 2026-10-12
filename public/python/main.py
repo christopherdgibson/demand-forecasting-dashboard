@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from statsmodels.tsa.exponential_smoothing.ets import ETSModel
 
@@ -34,6 +35,23 @@ def fit_model(filepath="RSXFSN.csv"):
     STATE["model"] = model
     STATE["last_date"] = last_date
 
+    # Calculate In-Sample Goodness-of-Fit Metrics
+    actuals = df['sales']
+    fitted_vals = model.fittedvalues
+    
+    # 1. MAPE (Mean Absolute Percentage Error)
+    mape = float(np.mean(np.abs((actuals - fitted_vals) / actuals)) * 100)
+    
+    # 2. RMSE (Root Mean Squared Error)
+    rmse = float(np.sqrt(np.mean((actuals - fitted_vals) ** 2)))
+
+    metrics = {
+        "aic": round(float(model.aic), 2),
+        "bic": round(float(model.bic), 2),
+        "mape": round(mape, 2),
+        "rmse": round(rmse, 2)
+    }
+
     # Return historical series for initial render
     historical_data = [
         {
@@ -55,7 +73,10 @@ def fit_model(filepath="RSXFSN.csv"):
         "ci_upper": last_value,
     }
 
-    return historical_data
+    return {
+        "demand": historical_data,
+        "metrics": metrics
+    }
 
 def generate_forecast(forecast_steps=12, alpha=0.05):
     """Generates forecast and 95% confidence intervals (alpha=0.05)."""

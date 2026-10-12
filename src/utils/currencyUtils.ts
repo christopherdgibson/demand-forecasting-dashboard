@@ -9,11 +9,15 @@ export function formatCurrencyValues<T extends object>(
     const val = obj[typedKey];
 
     if (typeof val === 'number' && !excludedKeys.includes(typedKey)) {
-      result[typedKey] = currencyFormatter.format(val);
+      result[typedKey] = formatCurrencyValue(val);
     }
   }
 
   return result;
+}
+
+export function formatCurrencyValue(value: number) {
+  return currencyFormatter.format(value);
 }
 
 const currencyFormatter = new Intl.NumberFormat('en-US', {

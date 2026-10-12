@@ -6,6 +6,18 @@ export interface DemandProps {
   ci_upper: number | null;
 }
 
+export interface ModelMetrics {
+  aic: number;
+  bic: number;
+  mape: number;
+  rmse: number;
+}
+
+export interface ModelResults {
+  demand: Array<DemandProps>;
+  metrics: ModelMetrics;
+}
+
 export interface ForecastInputs {
   steps: number;
   alpha: number;

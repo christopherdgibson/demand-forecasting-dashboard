@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DemandProps, ForecastInputs } from '../types';
+import type { DemandProps, ForecastInputs, ModelResults } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
   args?: any[];
 }
+
+type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<T | null>;
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
@@ -55,7 +57,7 @@ export function usePyodide() {
 
   // 2. Centralized Pyodide Invocation Wrapper
   const callPyFunction = useCallback(
-    async ({ fnName, args = [] }: PyFunctionProps): Promise<Array<DemandProps> | null> => {
+    (async <T,>({ fnName, args = [] }: PyFunctionProps): Promise<T | null> => {
       if (!pyodide) {
         console.warn(`Attempted to call ${fnName} before Pyodide finished loading.`);
         return null;
@@ -75,7 +77,7 @@ export function usePyodide() {
         pyProxy = pyFunction(...args);
 
         // Convert Pyodide Proxy object to native JavaScript Types
-        const jsResult = pyProxy.toJs({ dict_converter: Object.fromEntries });
+        const jsResult = pyProxy.toJs({ dict_converter: Object.fromEntries }) as T;
 
         return jsResult;
       } catch (error) {
@@ -93,27 +95,26 @@ export function usePyodide() {
           console.warn('Garbage collection trigger failed:', gcErr);
         }
       }
-    },
+    }) as CallPyFunction,
     [pyodide]
   );
 
   // 3. Public API: Initial Model Fit
   const fitModel = useCallback(
-    async (filepath: string = 'RSXFSN.csv'): Promise<Array<DemandProps> | null> => {
-      const historical = await callPyFunction({
+    async (filepath: string = 'RSXFSN.csv'): Promise<ModelResults | null> => {
+      const historical = await callPyFunction<ModelResults>({
         fnName: 'fit_model',
         args: [filepath],
       });
 
       return historical;
-    },
-    [callPyFunction]
+    }, [callPyFunction]
   );
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecast = useCallback(
     async ({steps, alpha}: ForecastInputs): Promise<Array<DemandProps> | null> => {
-      return await callPyFunction({
+      return await callPyFunction<Array<DemandProps>>({
         fnName: 'generate_forecast',
         args: [steps, alpha],
       });

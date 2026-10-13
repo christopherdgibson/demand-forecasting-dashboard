@@ -6,7 +6,6 @@ import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { roundNumber } from '../utils/numberUtils';
 import type { DemandProps, ForecastInputs, ForecastProps, ModelMetrics } from '../types';
-import styles from './App.module.css';
 
 const DEFAULT_FILE_PATH = 'RSXFSN.csv';
 const DEFAULT_FORECAST_STEPS = 12;
@@ -70,18 +69,9 @@ export default function App() {
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className={styles.loadingContainer}>
-        <h2 className={styles.loadingTitle}>Loading Python Environment...</h2>
-        <p className={styles.loadingText}>Downloading Pyodide WASM runtime into browser.</p>
-      </div>
-    );
-  }
-
   return (
-    <div className={styles.container}>
-      <h1 className={styles.title}>Demand Forecast Dashboard</h1>
+    <div className={'container'}>
+      <h1 className={'title'}>Demand Forecast Dashboard</h1>
 
       <Controls
         inputs={inputs}
@@ -91,23 +81,34 @@ export default function App() {
         isRunning={isRunning}
       />
 
-      {metrics && (
-        <MetricsCard metrics={metrics} />
-      )}
+      {isLoading
+          ? ( 
+            <div className={'loading-container'}>
+              <h2 className={'loading-title'}>Loading Python Environment...</h2>
+              <p className={'loading-text'}>Downloading Pyodide WASM runtime into browser.</p>
+            </div>
+          ) : (
+            <>
+              {metrics && (
+                <MetricsCard metrics={metrics} />
+              )}
             
-      {data && (
-        <ForecastChart
-          chartData={data}
-          dataHistorical={"historical"}
-          dataForecast={"forecast"}
-          name1={"Historical"}
-          name2={"Forecast"}
-          nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
-          formatType={"currency"}
-          xLabel={'Date'}
-          yLabel={'Demand'}
-        />
-      )}
+              {data && (
+                <ForecastChart
+                  chartData={data}
+                  dataHistorical={"historical"}
+                  dataForecast={"forecast"}
+                  name1={"Historical"}
+                  name2={"Forecast"}
+                  nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
+                  formatType={"currency"}
+                  xLabel={'Date'}
+                  yLabel={'Demand'}
+                />
+              )}
+            </>
+          )
+        }  
     </div>
   );
 }

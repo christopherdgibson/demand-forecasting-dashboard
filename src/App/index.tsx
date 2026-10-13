@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Controls from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
+import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
 import { MetricsCard } from '../components/MetricsCard';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
@@ -130,6 +131,14 @@ export default function App() {
                   formatType={"currency"}
                   xLabel={'Date'}
                   yLabel={'Demand'}
+                />
+              )}
+
+              {historicalData && forecastMap && (
+                <ForecastOverlayChart
+                  historicalData={historicalData}
+                  forecastMap={forecastMap}
+                  pastPeriods={historicalData.length}
                 />
               )}
             </>

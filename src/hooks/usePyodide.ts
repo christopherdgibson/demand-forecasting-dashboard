@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { DemandProps, ForecastInputs, ForecastResults, ModelResults } from '../types';
+import type { ForecastInputs, ForecastResults, ModelResults } from '../types';
 
 interface PyFunctionProps {
   fnName: string;

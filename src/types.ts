@@ -8,6 +8,15 @@ export interface DemandProps {
   ci_upper: number | null;
 }
 
+export interface ForecastInputs {
+  steps: number;
+  alpha: number;
+}
+
+export interface ForecastProps extends ForecastInputs {
+  filepath: string;
+}
+
 export interface ModelMetrics {
   aic: number;
   bic: number;
@@ -30,13 +39,18 @@ export interface ModelResults {
   }
 }
 
-export interface ForecastInputs {
-  steps: number;
-  alpha: number;
-}
-
-export interface ForecastProps extends ForecastInputs {
-  filepath: string;
+export interface OverlayResults {
+  date: string;
+  historical: number | null;
+  forecast_ets: number | null;
+  ci_lower_ets: number | null;
+  ci_upper_ets: number | null;
+  forecast_sarimax: number | null;
+  ci_lower_sarimax: number | null;
+  ci_upper_sarimax: number | null;
+  forecast_theta: number | null;
+  ci_lower_theta: number | null;
+  ci_upper_theta: number | null;
 }
 
 declare global {

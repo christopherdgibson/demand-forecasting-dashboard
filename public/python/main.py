@@ -127,18 +127,13 @@ def generate_forecasts(forecast_steps=12, alpha=0.05):
         # Get prediction results object and 
         #   extract confidence intervals (default alpha=0.05 for 95% CI)
         if modelType == 'ets':
-            pred = model.get_prediction(start=forecast_start, end=forecast_end)
-            mean_series = pred.predicted_mean
-            (ci_lower, ci_upper) = get_ets_ci(pred, alpha)
+            (mean_series, ci_lower, ci_upper) = get_ets_forecasts(model, forecast_start, forecast_end, alpha)
 
         elif modelType == 'sarimax':
-            pred = model.get_prediction(start=forecast_start, end=forecast_end)
-            mean_series = pred.predicted_mean
-            (ci_lower, ci_upper) = get_sarimax_ci(pred, alpha)
+            (mean_series, ci_lower, ci_upper) = get_sarimax_forecasts(model, forecast_start, forecast_end, alpha)
 
         elif modelType == 'theta':
-            mean_series = model.forecast(steps=steps)
-            (ci_lower, ci_upper) = get_theta_ci(model, steps, alpha)
+            (mean_series, ci_lower, ci_upper) = get_theta_forecasts(model, steps, alpha)
 
         else:
             continue
@@ -167,15 +162,20 @@ def generate_forecasts(forecast_steps=12, alpha=0.05):
 
 # Confidence interval helpers for scope separation
 
-def get_ets_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:
-    pred_ci = prediction.pred_int(alpha=alpha)
+def get_ets_forecasts(model: Any, forecast_start: Any, forecast_end: Any, alpha: float) -> Tuple[Any, Any, Any]:
+    pred = model.get_prediction(start=forecast_start, end=forecast_end)
+    mean_series = pred.predicted_mean
+    pred_ci = pred.pred_int(alpha=alpha)
     # Handle column naming variations in statsmodels pred_int output (e.g. 'lower PI (alpha=0.050000)')
-    return pred_ci.iloc[:, 0], pred_ci.iloc[:, 1]
+    return mean_series, pred_ci.iloc[:, 0], pred_ci.iloc[:, 1]
 
-def get_sarimax_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:
-    pred_ci = prediction.summary_frame(alpha=alpha)
-    return pred_ci['mean_ci_lower'], pred_ci['mean_ci_upper']
+def get_sarimax_forecasts(model: Any, forecast_start: Any, forecast_end: Any, alpha: float) -> Tuple[Any, Any, Any]:
+    pred = model.get_prediction(start=forecast_start, end=forecast_end)
+    mean_series = pred.predicted_mean
+    pred_ci = pred.summary_frame(alpha=alpha)
+    return mean_series, pred_ci['mean_ci_lower'], pred_ci['mean_ci_upper']
 
-def get_theta_ci(model: Any, steps: int, alpha: float) -> Tuple[Any, Any]:
+def get_theta_forecasts(model: Any, steps: int, alpha: float) -> Tuple[Any, Any, Any]:
+    mean_series = model.forecast(steps=steps)
     pred_ci = model.prediction_intervals(steps=steps, alpha=alpha)
-    return pred_ci['lower'], pred_ci['upper']
+    return mean_series, pred_ci['lower'], pred_ci['upper']

@@ -73,7 +73,6 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
     );
   }
 
-
   function CustomTooltip(props: TooltipContentProps<ValueType, NameType>) {
     const { active, payload, label } = props;
 

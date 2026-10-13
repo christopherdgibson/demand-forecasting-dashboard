@@ -3,13 +3,15 @@ import type { ForecastProps, ModelType } from '../../types';
 
 interface ControlsProps {
   inputs: ForecastProps;
+  modelType: ModelType;
+  onModelChange: (updatedParams: ModelType) => void;
   onDatasetChange: (updatedParams: ForecastProps) => void;
   onForecastChange: (updatedParams: ForecastProps) => void;
   onRunForecast: () => void;
   isRunning: boolean;
 }
 
-export default function Controls({inputs, onDatasetChange, onForecastChange, onRunForecast, isRunning}: ControlsProps) {
+export default function Controls({inputs, modelType, onModelChange, onDatasetChange, onForecastChange, onRunForecast, isRunning}: ControlsProps) {
   const handleInputsChange = <F extends keyof ForecastProps> (
     field: F,
     value: ForecastProps[F],
@@ -66,9 +68,9 @@ export default function Controls({inputs, onDatasetChange, onForecastChange, onR
           </label>
           <select
             className={styles.input}
-            value={inputs.modelType}
+            value={modelType}
             disabled={isRunning}
-            onChange={(e) => handleInputsChange('modelType', e.target.value as ModelType)}
+            onChange={(e) => onModelChange(e.target.value as ModelType)}
           >
             <option value="ets">ETS</option>
             <option value="sarimax">SARIMAX</option>

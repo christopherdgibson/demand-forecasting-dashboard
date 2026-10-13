@@ -15,6 +15,12 @@ export interface ModelMetrics {
   rmse: number;
 }
 
+export interface ForecastResults {
+  ets: Array<DemandProps>;
+  sarimax: Array<DemandProps>;
+  theta: Array<DemandProps>;
+}
+
 export interface ModelResults {
   data: Array<DemandProps>;
   metrics: {
@@ -25,7 +31,6 @@ export interface ModelResults {
 }
 
 export interface ForecastInputs {
-  modelType: ModelType;
   steps: number;
   alpha: number;
 }

@@ -5,24 +5,24 @@ import { MetricsCard } from '../components/MetricsCard';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { roundNumber } from '../utils/numberUtils';
-import type { DemandProps, ForecastInputs, ForecastProps, ModelMetrics } from '../types';
+import type { DemandProps, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType } from '../types';
 
 const DEFAULT_FILE_PATH = 'RSXFSN.csv';
 const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
 
 export default function App() {
-  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, modelType: 'ets', steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
+  const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
   const [data, setData] = useState<Array<DemandProps> | null>(null);
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [historicalData, setHistoricalData] = useState<Array<DemandProps> | null>();
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
-  const [forecastMap, setForecastMap] = useState<Record<string, DemandProps[]>>({}); // For importing forecasts for all models
-  const [selectedModel, setSelectedModel] = useState<'ets' | 'sarimax'>('ets'); // For separaing model toggle from forecast update
+  const [forecastMap, setForecastMap] = useState<ForecastResults>();
+  const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
 
-  const { isLoading, fitModels, updateForecast } = usePyodide();
-  // const { isLoading, fitModels, updateForecast } = usePyodideWorker();
+  const { isLoading, fitModels, updateForecasts } = usePyodide();
+  // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
 
   // Load and fit model on initial mount
   useEffect(() => {
@@ -30,33 +30,57 @@ export default function App() {
     runForecast(inputs);
   }, [isLoading]);
 
-  async function runForecast({filepath, modelType, steps, alpha}: ForecastProps): Promise<void> {
-    setInputs({filepath, modelType, steps, alpha})
+  async function runForecast({filepath, steps, alpha}: ForecastProps): Promise<void> {
+    setInputs({filepath, steps, alpha})
     const modelResults = await fitModels(filepath);
     const historical = modelResults !== null ? modelResults.data : null;
-    const modelMetrics = modelResults !== null ? modelResults.metrics : null;
     setHistoricalData(historical);
-    
+
+    const modelMetrics = modelResults !== null ? modelResults.metrics : null;    
     if (modelMetrics) {
       setMetricsMap(modelMetrics);
-      setMetrics(modelMetrics[modelType]);
+      setMetrics(modelMetrics[selectedModel]);
     }
-    const forecast = await updateForecast({modelType, steps, alpha});
-    if (historical && forecast) {
-      setData([...historical, ...forecast]);
+
+    const activeForecast = await updateForecastResults({steps, alpha});
+    if (historical && activeForecast) {
+      setData([...historical, ...activeForecast]);
+    }
+  }
+
+  // Change active forecast without backend update
+  const handleModelChange = (modelType: ModelType) => {
+    setSelectedModel(modelType);
+    const activeForecast = forecastMap ? forecastMap[modelType] : null;
+    setMetrics(metricsMap[modelType]);
+
+    if (historicalData && activeForecast) {
+      setData([...historicalData, ...activeForecast]);
     }
   }
 
   // Update chart input changes moves (No refitting)
-  const handleForecastChange = async ({modelType, steps, alpha}: ForecastInputs): Promise<void> => {
-    setInputs({...inputs, modelType, steps, alpha});
+  const handleForecastChange = async ({steps, alpha}: ForecastInputs): Promise<void> => {
+    setInputs({...inputs, steps, alpha});
     if (!historicalData) return;
-    setMetrics(metricsMap[modelType]);
-    const forecast = await updateForecast({modelType, steps, alpha});
-    if (forecast) {
-      setData([...historicalData, ...forecast]);
+    setMetrics(metricsMap[selectedModel]);
+
+    const activeForecast = await updateForecastResults({steps, alpha}); 
+    if (activeForecast) {
+      setData([...historicalData, ...activeForecast]);
     }
   };
+
+  const updateForecastResults = async({steps, alpha}: ForecastInputs): Promise<Array<DemandProps> | null> => {
+    const forecastResults = await updateForecasts({steps, alpha});
+    let activeForecast = null
+    if (forecastResults) {
+      setForecastMap(forecastResults);
+      activeForecast = forecastResults[selectedModel];
+    }
+    
+    return activeForecast;
+  }
 
   const handleRun = async () => {
     setIsRunning(true);
@@ -75,6 +99,8 @@ export default function App() {
 
       <Controls
         inputs={inputs}
+        modelType={selectedModel}
+        onModelChange={handleModelChange}
         onDatasetChange={runForecast}
         onForecastChange={handleForecastChange}
         onRunForecast={handleRun}

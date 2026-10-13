@@ -107,62 +107,69 @@ def fit_models(filepath="RSXFSN.csv"):
         "metrics": STATE["metrics"]
     }
 
-def generate_forecast(modelType='ets', forecast_steps=12, alpha=0.05):
-    """Generates forecast and 95% confidence intervals (alpha=0.05)."""
+def generate_forecasts(forecast_steps=12, alpha=0.05):
+    """Generates forecasts and 95% confidence intervals (alpha=0.05)."""
     if STATE["models"] is None:
-        raise ValueError("Model must be fitted before calling generate_forecast.")
+        raise ValueError("Model must be fitted before calling generate_forecasts.")
     
     steps = int(forecast_steps)
-    model = STATE["models"][modelType]
     last_date = STATE["last_date"]
 
     forecast_start = pd.to_datetime(last_date)+pd.DateOffset(months=1)
     forecast_end = pd.to_datetime(last_date)+pd.DateOffset(months=steps)
 
-    # Get prediction results object and 
-    #   extract confidence intervals (default alpha=0.05 for 95% CI)
-    if modelType == 'ets':
-        pred = model.get_prediction(start=forecast_start, end=forecast_end)
-        mean_series = pred.predicted_mean
-        (ci_lower, ci_upper) = get_ets_ci(pred, alpha)
+    forecast_maps = {}
 
-    elif modelType == 'sarimax':
-        pred = model.get_prediction(start=forecast_start, end=forecast_end)
-        mean_series = pred.predicted_mean
-        (ci_lower, ci_upper) = get_sarimax_ci(pred, alpha)
+    for modelType, model in STATE["models"].items():
+        if model is None:
+            continue
 
-    elif modelType == 'theta':
-        mean_series = model.forecast(steps=steps)
-        (ci_lower, ci_upper) = get_theta_ci(model, steps, alpha)
+        # Get prediction results object and 
+        #   extract confidence intervals (default alpha=0.05 for 95% CI)
+        if modelType == 'ets':
+            pred = model.get_prediction(start=forecast_start, end=forecast_end)
+            mean_series = pred.predicted_mean
+            (ci_lower, ci_upper) = get_ets_ci(pred, alpha)
 
-    else:
-        raise ValueError(f"Unsupported demand model type: '{modelType}'")
+        elif modelType == 'sarimax':
+            pred = model.get_prediction(start=forecast_start, end=forecast_end)
+            mean_series = pred.predicted_mean
+            (ci_lower, ci_upper) = get_sarimax_ci(pred, alpha)
 
-    forecast_data = []
-    
-    # Append forecasted periods
-    for i in range(steps):
-        date_str = str(mean_series.index[i].date())
-        mean_val = float(mean_series.iloc[i])
+        elif modelType == 'theta':
+            mean_series = model.forecast(steps=steps)
+            (ci_lower, ci_upper) = get_theta_ci(model, steps, alpha)
+
+        else:
+            continue
+            # raise ValueError(f"Unsupported demand model type: '{modelType}'")
+
+        forecast_data = []
         
-        # Handle column naming variations in statsmodels conf_int output
-        lower_val = float(ci_lower.iloc[i])
-        upper_val = float(ci_upper.iloc[i])
+        # Append forecasted periods
+        for i in range(steps):
+            date_str = str(mean_series.index[i].date())
+            mean_val = float(mean_series.iloc[i])
+            lower_val = float(ci_lower.iloc[i])
+            upper_val = float(ci_upper.iloc[i])
 
-        forecast_data.append({
-            "date": date_str,
-            "historical": None,
-            "forecast": round(mean_val, 2),
-            "ci_lower": round(lower_val, 2),
-            "ci_upper": round(upper_val, 2),
-        })
+            forecast_data.append({
+                "date": date_str,
+                "historical": None,
+                "forecast": round(mean_val, 2),
+                "ci_lower": round(lower_val, 2),
+                "ci_upper": round(upper_val, 2),
+            })
+
+        forecast_maps[modelType] = forecast_data
     
-    return forecast_data
+    return forecast_maps
 
 # Confidence interval helpers for scope separation
 
 def get_ets_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:
     pred_ci = prediction.pred_int(alpha=alpha)
+    # Handle column naming variations in statsmodels pred_int output (e.g. 'lower PI (alpha=0.050000)')
     return pred_ci.iloc[:, 0], pred_ci.iloc[:, 1]
 
 def get_sarimax_ci(prediction: Any, alpha: float) -> Tuple[Any, Any]:

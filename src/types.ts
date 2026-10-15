@@ -10,6 +10,7 @@ export interface DemandProps {
 
 export interface ControlsBase {
   isRunning: boolean;
+  isLoading: boolean;
 }
 
 export interface CardInputs {
@@ -31,10 +32,10 @@ export interface ForecastProps extends ForecastInputs {
 }
 
 export interface ModelMetrics {
-  aic: number;
-  bic: number;
-  mape: number;
-  rmse: number;
+  aic: number | null;
+  bic: number | null;
+  mape: number | null;
+  rmse: number | null;
 }
 
 export interface ForecastResults {

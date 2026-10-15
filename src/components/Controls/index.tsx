@@ -4,7 +4,7 @@ import { roundNumber } from '../../utils/numberUtils';
 import styles from './Controls.module.css';
 import type {CardInputs, ControlsBase, ForecastProps, ModelType } from '../../types';
 
-interface ControlsProps {
+interface ControlsProps extends ControlsBase {
   inputs: ForecastProps;
   modelType: ModelType;
   onModelChange: (updatedParams: ModelType) => void;
@@ -13,7 +13,6 @@ interface ControlsProps {
   onRunForecast?: () => void;
   badgeLabel?: string;
   stepLabel?: string;
-  isRunning: boolean;
 }
 
 interface ControlCardProps<T> extends ControlsBase {
@@ -51,7 +50,7 @@ function checkBoundsViolation<T>({card, field, value, boundsCallbacks, triggerFl
     return false;
 };
 
-export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boundsCallbacks, triggerFlag, isRunning}: ControlCardProps<T>) {
+export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boundsCallbacks, triggerFlag, isRunning, isLoading}: ControlCardProps<T>) {
     const [localValue, setLocalValue] = useState<string>(String(value));
 
     // Sync local state if parent value changes externally
@@ -92,7 +91,7 @@ export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boun
                 className={styles.input}
                 step={card.step}
                 value={localValue}
-                disabled={isRunning}
+                disabled={isRunning || isLoading}
                 onChange={handleChange}
                 onBlur={handleBlur}
             />
@@ -100,7 +99,7 @@ export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boun
     );
 }
 
-export function Controls({inputs, modelType, onModelChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning}: ControlsProps) {
+export function Controls({inputs, modelType, onModelChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
   const handleInputsChange = <F extends keyof ForecastProps> (
     field: F,
     value: ForecastProps[F],
@@ -141,7 +140,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
             <select
               className={styles.input}
               value={inputs.filepath}
-              // disabled={isRunning}
+              // disabled={isRunning || isLoading}
               disabled={true}
               onChange={(e) => handleInputsChange('filepath', e.target.value)}
             >
@@ -161,7 +160,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
           <select
             className={styles.input}
             value={modelType}
-            disabled={isRunning}
+            disabled={isRunning || isLoading}
             onChange={(e) => onModelChange(e.target.value as ModelType)}
           >
             <option value="ets">ETS</option>
@@ -182,7 +181,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
               className={styles.input}
               min={1}
               value={inputs.steps}
-              disabled={isRunning}
+              disabled={isRunning || isLoading}
               onChange={(e) => handleInputsChange('steps', Number(e.target.value), 1)}
             />
           </div>
@@ -200,7 +199,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
             max={1.0}
             step={0.01}
             value={inputs.alpha}
-            disabled={isRunning}
+            disabled={isRunning || isLoading}
             onChange={(e) => handleInputsChange('alpha', Number(e.target.value), 0)}
           />
         </div>
@@ -212,7 +211,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
           <button
             className={styles.primaryButton}
             onClick={onRunForecast}
-            disabled={isRunning}
+            disabled={isRunning || isLoading}
           >
             {isRunning ? 'Running Forecast...' : 'Run Forecast'}
           </button>

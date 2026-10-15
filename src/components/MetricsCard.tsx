@@ -7,8 +7,28 @@ interface MetricsCardProps {
   metrics: ModelMetrics | null;
 }
 
-export function MetricsCard({ metrics }: MetricsCardProps) {
+export function Metrics({ metrics }: MetricsCardProps) {
   if (!metrics) return null;
+
+  return (
+    <div className={'metrics-container'}>
+      <h2 className={'section-heading'}>Model Fit Metrics</h2>
+      <MetricsCard metrics={metrics}/>
+    </div>
+  );
+}
+
+
+function MetricsCard({ metrics }: MetricsCardProps) {
+  if (!metrics) return null;
+  // if (!metrics) {
+  //   metrics = {
+  //     aic: null,
+  //     bic: null,
+  //     mape: null,
+  //     rmse: null
+  //   }
+  // }
 
   return (
     <div className={'metrics-grid'}>

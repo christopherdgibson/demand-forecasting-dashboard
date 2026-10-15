@@ -3,7 +3,7 @@ export function roundNumber(input: number, digits: number): number {
     return Math.round(input*precision)/precision;
 }
 
-export function formatNumber(value: number) {
+export function formatNumber(value: number | null) {
     if (typeof value !== 'number') return null;
     return numberFormatter.format(value);
 }
@@ -14,7 +14,7 @@ const numberFormatter = new Intl.NumberFormat('en-UK', {
     maximumFractionDigits: 2,
 });
 
-export function formatPercentage(value: number) {
+export function formatPercentage(value: number | null) {
     if (typeof value !== 'number') return null;
   return percentageFormatter.format(value);
 }

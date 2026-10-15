@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react';
 import { Controls } from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
-import { MetricsCard } from '../components/MetricsCard';
+import { Metrics } from '../components/MetricsCard';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { roundNumber } from '../utils/numberUtils';
 
 import './styles.css'
+import chartStyles from '../components/ForecastChart/ForecastChart.module.css';
 
 import type { DemandProps, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType } from '../types';
 
@@ -102,90 +103,85 @@ export default function App() {
     <div className={'app-container'}>
       <h1 className={'title'}>Demand Forecast Dashboard</h1>
 
-      {isLoading
-          ? ( 
-            <div className={'loading-container'}>
-              <h2 className={'loading-title'}>Loading Python Environment...</h2>
-              <p className={'loading-text'}>Downloading Pyodide WASM runtime into browser.</p>
-            </div>
-          ) : (
-            <>
-              {metrics && (
-                <MetricsCard metrics={metrics} />
+      {isLoading && ( 
+        <div className={'loading-container'}>
+          <h2 className={'loading-title'}>Loading Python Environment...</h2>
+          <p className={'loading-text'}>Downloading Pyodide WASM runtime into browser.</p>
+        </div>
+      )}
+        
+      <Metrics metrics={metrics} />
+    
+      <div className={`${activeTab}`}>
+        {/* Tab Navigation */}
+        <div className="nav-tabs">
+            <button
+                onClick={() => setActiveTab('forecast')}
+                className={`tab-btn ${activeTab === 'forecast' ? 'active' : ''}`}
+            >
+                Demand Forecast
+            </button>
+            <button
+                onClick={() => setActiveTab('ci-overlay')}
+                className={`tab-btn ${activeTab === 'ci-overlay' ? 'active' : ''}`}
+            >
+                Forecast Overlay
+            </button>
+            <button
+                onClick={() => setActiveTab('show-all')}
+                className={`tab-btn ${activeTab === 'show-all' ? 'active' : ''}`}
+            >
+                Show All
+            </button>
+        </div>
+
+        {/* Tab 1: Demand Forecast */}
+        <div className='active-forecast'>                  
+            <h2 className="section-heading">Demand Forecast</h2>
+            <div className={chartStyles.chartCard}>  
+              <Controls
+                inputs={inputs}
+                modelType={selectedModel}
+                onModelChange={handleModelChange}
+                onDatasetChange={runForecast}
+                onForecastChange={handleForecastChange}
+                onRunForecast={handleRun}
+                isRunning={isRunning}
+                isLoading={isLoading}
+              />
+              {data && (
+                <ForecastChart
+                  chartData={data}
+                  dataHistorical={"historical"}
+                  dataForecast={"forecast"}
+                  name1={"Historical"}
+                  name2={"Forecast"}
+                  nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
+                  formatType={"currency"}
+                  xLabel={'Date'}
+                  yLabel={'Demand'}
+                />
               )}
+            </div>
+        </div>
 
-              <div className={`${activeTab}`}>
-                {/* Tab Navigation */}
-                <div className="nav-tabs">
-                    <button
-                        onClick={() => setActiveTab('forecast')}
-                        className={`tab-btn ${activeTab === 'forecast' ? 'active' : ''}`}
-                    >
-                        Demand Forecast
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('ci-overlay')}
-                        className={`tab-btn ${activeTab === 'ci-overlay' ? 'active' : ''}`}
-                    >
-                        Forecast Overlay
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('show-all')}
-                        className={`tab-btn ${activeTab === 'show-all' ? 'active' : ''}`}
-                    >
-                        Show All
-                    </button>
-                </div>
-
-                {/* Tab 1: Demand Forecast */}
-                <div className='active-forecast'>                  
-                    <h2 className="section-heading">Demand Forecast</h2>
-                    {data && (
-                    <ForecastChart
-                      chartData={data}
-                      dataHistorical={"historical"}
-                      dataForecast={"forecast"}
-                      name1={"Historical"}
-                      name2={"Forecast"}
-                      nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
-                      formatType={"currency"}
-                      xLabel={'Date'}
-                      yLabel={'Demand'}
-                      controlPanel={
-                        <Controls
-                          inputs={inputs}
-                          modelType={selectedModel}
-                          onModelChange={handleModelChange}
-                          onDatasetChange={runForecast}
-                          onForecastChange={handleForecastChange}
-                          onRunForecast={handleRun}
-                          isRunning={isRunning}
-                        />
-                      }
-                    />
-                  )}
-                </div>
-
-                {/* Tab 2: Forecast Overlay */}
-                <div className='active-ci-overlay'>
-                    <h2 className="section-heading">Forecast Overlay</h2>
-                    {historicalData && forecastMap && (
-                      <ForecastOverlayChart
-                        inputs={{steps: inputs.steps, alpha: inputs.alpha}}
-                        modelType={selectedModel}
-                        historicalData={historicalData}
-                        forecastMap={forecastMap}
-                        pastPeriods={historicalData.length}
-                        onModelChange={handleModelChange}
-                        onForecastChange={handleForecastChange}
-                        isRunning={isRunning}
-                      />
-                    )}
-                </div>
-              </div>
-            </>
-          )
-        }  
+        {/* Tab 2: Forecast Overlay */}
+        <div className='active-ci-overlay'>
+            <h2 className="section-heading">Forecast Overlay</h2>
+            {historicalData && forecastMap && (
+              <ForecastOverlayChart
+                inputs={{steps: inputs.steps, alpha: inputs.alpha}}
+                modelType={selectedModel}
+                historicalData={historicalData}
+                forecastMap={forecastMap}
+                pastPeriods={historicalData.length}
+                onModelChange={handleModelChange}
+                onForecastChange={handleForecastChange}
+                isRunning={isRunning}
+              />
+            )}
+        </div>
+      </div>
     </div>
   );
 }

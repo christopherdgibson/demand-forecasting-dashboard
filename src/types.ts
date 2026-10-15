@@ -8,13 +8,26 @@ export interface DemandProps {
   ci_upper: number | null;
 }
 
+export interface ControlsBase {
+  isRunning: boolean;
+}
+
+export interface CardInputs {
+  title: string;
+  latex?: string;
+  hint?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
 export interface ForecastInputs {
-  steps: number;
+  steps?: number;
   alpha: number;
 }
 
 export interface ForecastProps extends ForecastInputs {
-  filepath: string;
+  filepath?: string;
 }
 
 export interface ModelMetrics {

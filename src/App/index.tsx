@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import Controls from '../components/Controls';
+import { Controls } from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
 import { MetricsCard } from '../components/MetricsCard';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { roundNumber } from '../utils/numberUtils';
+
+import './styles.css'
+
 import type { DemandProps, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType } from '../types';
 
 const DEFAULT_FILE_PATH = 'RSXFSN.csv';
@@ -13,6 +16,7 @@ const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState<string | null>('forecast');
   const [inputs, setInputs] = useState<ForecastProps>({filepath: DEFAULT_FILE_PATH, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
   const [data, setData] = useState<Array<DemandProps> | null>(null);
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);
@@ -95,18 +99,8 @@ export default function App() {
   };
 
   return (
-    <div className={'container'}>
+    <div className={'app-container'}>
       <h1 className={'title'}>Demand Forecast Dashboard</h1>
-
-      <Controls
-        inputs={inputs}
-        modelType={selectedModel}
-        onModelChange={handleModelChange}
-        onDatasetChange={runForecast}
-        onForecastChange={handleForecastChange}
-        onRunForecast={handleRun}
-        isRunning={isRunning}
-      />
 
       {isLoading
           ? ( 
@@ -119,28 +113,76 @@ export default function App() {
               {metrics && (
                 <MetricsCard metrics={metrics} />
               )}
-            
-              {data && (
-                <ForecastChart
-                  chartData={data}
-                  dataHistorical={"historical"}
-                  dataForecast={"forecast"}
-                  name1={"Historical"}
-                  name2={"Forecast"}
-                  nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
-                  formatType={"currency"}
-                  xLabel={'Date'}
-                  yLabel={'Demand'}
-                />
-              )}
 
-              {historicalData && forecastMap && (
-                <ForecastOverlayChart
-                  historicalData={historicalData}
-                  forecastMap={forecastMap}
-                  pastPeriods={historicalData.length}
-                />
-              )}
+              <div className={`${activeTab}`}>
+                {/* Tab Navigation */}
+                <div className="nav-tabs">
+                    <button
+                        onClick={() => setActiveTab('forecast')}
+                        className={`tab-btn ${activeTab === 'forecast' ? 'active' : ''}`}
+                    >
+                        Demand Forecast
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('ci-overlay')}
+                        className={`tab-btn ${activeTab === 'ci-overlay' ? 'active' : ''}`}
+                    >
+                        Forecast Overlay
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('show-all')}
+                        className={`tab-btn ${activeTab === 'show-all' ? 'active' : ''}`}
+                    >
+                        Show All
+                    </button>
+                </div>
+
+                {/* Tab 1: Demand Forecast */}
+                <div className='active-forecast'>                  
+                    <h2 className="section-heading">Demand Forecast</h2>
+                    {data && (
+                    <ForecastChart
+                      chartData={data}
+                      dataHistorical={"historical"}
+                      dataForecast={"forecast"}
+                      name1={"Historical"}
+                      name2={"Forecast"}
+                      nameCI={`${roundNumber((1-inputs.alpha)*100, 1)}% Confidence Band`}
+                      formatType={"currency"}
+                      xLabel={'Date'}
+                      yLabel={'Demand'}
+                      controlPanel={
+                        <Controls
+                          inputs={inputs}
+                          modelType={selectedModel}
+                          onModelChange={handleModelChange}
+                          onDatasetChange={runForecast}
+                          onForecastChange={handleForecastChange}
+                          onRunForecast={handleRun}
+                          isRunning={isRunning}
+                        />
+                      }
+                    />
+                  )}
+                </div>
+
+                {/* Tab 2: Forecast Overlay */}
+                <div className='active-ci-overlay'>
+                    <h2 className="section-heading">Forecast Overlay</h2>
+                    {historicalData && forecastMap && (
+                      <ForecastOverlayChart
+                        inputs={{steps: inputs.steps, alpha: inputs.alpha}}
+                        modelType={selectedModel}
+                        historicalData={historicalData}
+                        forecastMap={forecastMap}
+                        pastPeriods={historicalData.length}
+                        onModelChange={handleModelChange}
+                        onForecastChange={handleForecastChange}
+                        isRunning={isRunning}
+                      />
+                    )}
+                </div>
+              </div>
             </>
           )
         }  

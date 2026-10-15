@@ -19,6 +19,7 @@ import type { DemandProps } from '../../types';
 import styles from './ForecastChart.module.css';
 
 interface ForecastChartProps {
+  controlPanel?: any;
   chartData: Array<DemandProps>;
   title?: string;
   dataHistorical: keyof DemandProps;
@@ -33,7 +34,7 @@ interface ForecastChartProps {
 
 export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
   chartData, dataHistorical, dataForecast, name1, name2, nameCI = "95% Confidence Interval",
-    formatType = "currency", xLabel, yLabel 
+    formatType = "currency", xLabel, yLabel, controlPanel
 }: ForecastChartProps) {
 
   if (chartData.length === 0) return null;
@@ -118,9 +119,9 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
     }));
 
   return (
-    <div className={styles.card}>
+    <div className={styles.chartCard}>
+      {controlPanel}
       <h3 className={styles.title}>{title}</h3>
-      
       <div className={styles.chartContainer}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={formattedData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>

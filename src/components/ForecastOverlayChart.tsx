@@ -120,7 +120,6 @@ export function ForecastOverlayChart({ inputs, modelType, historicalData, foreca
 
     useEffect(() => {
         updateOverlayRows(forecastMap);
-        console.log('useEffect')
     }, [forecastMap]);
 
     function handlePeriodChange(newPeriods: number) {

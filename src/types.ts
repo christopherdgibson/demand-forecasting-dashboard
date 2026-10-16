@@ -10,7 +10,7 @@ export interface DemandProps {
 
 export interface ControlsBase {
   isRunning: boolean;
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
 export interface CardInputs {

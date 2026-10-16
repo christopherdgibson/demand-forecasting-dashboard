@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { roundNumber } from '../../utils/numberUtils';
 
 import styles from './Controls.module.css';
-import type {CardInputs, ControlsBase, ForecastProps, ModelType } from '../../types';
+import type {CardInputs, ControlsBase, ForecastInputs, ForecastProps, ModelType } from '../../types';
+
+type ForecastControlKeys = keyof ForecastInputs;
 
 interface ControlsProps extends ControlsBase {
   inputs: ForecastProps;
@@ -19,38 +20,10 @@ interface ControlCardProps<T> extends ControlsBase {
   inputKey: T;
   value: number | undefined;
   card: CardInputs;
-  updateDemandConfig: (field: T, value: number, minValue?: number, maxValue?: number) => void;
-  boundsCallbacks?: {minCallback: (field: T) => boolean, maxCallback: (field: T) => boolean};
-  triggerFlag?: () => void;
+  updateConfig: (field: T, value: number, minValue?: number, maxValue?: number) => void;
 }
 
-interface BoundsViolationProps<T> {
-    card: CardInputs;
-    field: T;
-    value: number;
-    boundsCallbacks?: {minCallback?: (field: T) => boolean, maxCallback?: (field: T) => boolean};
-    triggerFlag?: () => void;
-}
-
-function checkBoundsViolation<T>({card, field, value, boundsCallbacks, triggerFlag}: BoundsViolationProps<T>): boolean {
-    if (card.min !== undefined && roundNumber(value, 1) < roundNumber(card.min, 1)) {
-        if (boundsCallbacks && boundsCallbacks.minCallback && boundsCallbacks.minCallback(field) == true&& triggerFlag) {
-            triggerFlag();
-        }
-        return true;
-    }
-
-    if (card.max !== undefined && roundNumber(value, 1) > roundNumber(card.max, 1)) {
-        if (boundsCallbacks && boundsCallbacks.maxCallback && boundsCallbacks.maxCallback(field) == true && triggerFlag) {
-            triggerFlag();
-        }
-        return true;
-    }
-
-    return false;
-};
-
-export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boundsCallbacks, triggerFlag, isRunning, isLoading}: ControlCardProps<T>) {
+export function ControlCard<T extends keyof ForecastProps>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
     const [localValue, setLocalValue] = useState<string>(String(value));
 
     // Sync local state if parent value changes externally
@@ -63,20 +36,19 @@ export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boun
         setLocalValue(rawText);
 
         const numVal = parseFloat(rawText);
-        if (isNaN(numVal)) return;
-
-        if (checkBoundsViolation({card, field: inputKey, value: numVal, boundsCallbacks, triggerFlag}) === true) {
-            setLocalValue(String(value)); // Revert input display to safe value
-        } else {
-            updateDemandConfig(inputKey, numVal); // Valid input, update parent state normally
+        if (isNaN(numVal)) {
+          return;
         }
     };
 
     const handleBlur = () => {
         const numVal = parseFloat(localValue);
-        // On blur, if out of bounds, snap it back to the last valid value
+        
         if (isNaN(numVal) || (card.min !== undefined && numVal < card.min) || (card.max !== undefined && numVal > card.max)) {
-        setLocalValue(String(value));
+          // On blur, if out of bounds, snap it back to the last valid value
+          setLocalValue(String(value));
+        } else {
+          updateConfig(inputKey, numVal);
         }
     };
 
@@ -100,6 +72,24 @@ export function ControlCard<T,>({card, inputKey, value, updateDemandConfig, boun
 }
 
 export function Controls({inputs, modelType, onModelChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+  const inputKeys: ForecastControlKeys[] = ['alpha', 'steps'];
+  const stepSize = 0.1;
+  const cards: Record<keyof ForecastInputs, CardInputs> = {
+    steps: {
+      title: "Forecast Horizon",
+      hint: "Predicted Periods",
+      min: 1,
+      step: 1,
+    },
+    alpha: {
+      title: 'Confidence Interval (α)',
+      hint: "0.01 - 1.0",
+      min: 0.01,
+      max: 1,
+      step: 0.01,
+    }
+  };
+
   const handleInputsChange = <F extends keyof ForecastProps> (
     field: F,
     value: ForecastProps[F],
@@ -169,40 +159,27 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
           </select>
         </div>
 
-        {/* Forecast Steps */}
-        { inputs.steps &&
-          <div className={styles.fieldGroup}>
-            <label className={styles.label}>
-              <span>{stepLabel}</span>
-              <span className={styles.hint}>Time Horizon</span>
-            </label>
-            <input
-              type="number"
-              className={styles.input}
-              min={1}
-              value={inputs.steps}
-              disabled={isRunning || isLoading}
-              onChange={(e) => handleInputsChange('steps', Number(e.target.value), 1)}
-            />
-          </div>
-        }
-        {/* Confidence Interval */}
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
-            <span>Confidence Interval (&alpha;)</span>
-            <span className={styles.hint}>0.001 - 1.0</span>
-          </label>
-          <input
-            type="number"
-            className={styles.input}
-            min={0.01}
-            max={1.0}
-            step={0.01}
-            value={inputs.alpha}
-            disabled={isRunning || isLoading}
-            onChange={(e) => handleInputsChange('alpha', Number(e.target.value), 0)}
-          />
-        </div>
+        {inputKeys.map((inputKey) => {
+            const card = cards[inputKey];
+            const rawValue = inputs[inputKey];
+
+            if (!card || typeof rawValue !== 'number') {
+                return null;
+            }
+
+            return (
+                <div key={String(inputKey)} className={styles.fieldGroup}>
+                    <ControlCard
+                        card={card}
+                        inputKey={inputKey}
+                        value={rawValue}
+                        updateConfig={handleInputsChange}
+                        isRunning={isRunning}
+                        isLoading={isLoading}
+                    />
+                </div>
+            );
+        })}
       </div>
 
       {inputs.filepath &&

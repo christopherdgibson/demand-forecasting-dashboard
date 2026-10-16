@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import styles from './Controls.module.css';
 import type {CardInputs, ControlsBase, ForecastInputs, ForecastProps, ModelType } from '../../types';
@@ -24,7 +24,15 @@ interface ControlCardProps<T> extends ControlsBase {
 }
 
 export function ControlCard<T extends keyof ForecastProps>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
+    const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [localValue, setLocalValue] = useState<string>(String(value));
+
+    // Clean up timer if component unmounts
+    useEffect(() => {
+        return () => {
+            if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        };
+    }, []);
 
     // Sync local state if parent value changes externally
     useEffect(() => {
@@ -32,42 +40,70 @@ export function ControlCard<T extends keyof ForecastProps>({card, inputKey, valu
     }, [value]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const rawText = e.target.value;
-        setLocalValue(rawText);
+      const rawText = e.target.value;
+      setLocalValue(rawText);
 
-        const numVal = parseFloat(rawText);
-        if (isNaN(numVal)) {
-          return;
-        }
+      const numVal = parseFloat(rawText);
+      if (isInvalid(numVal)) return;
+      
+      scheduleChange(numVal);
     };
 
     const handleBlur = () => {
-        const numVal = parseFloat(localValue);
+      const numVal = parseFloat(localValue);
         
-        if (isNaN(numVal) || (card.min !== undefined && numVal < card.min) || (card.max !== undefined && numVal > card.max)) {
-          // On blur, if out of bounds, snap it back to the last valid value
-          setLocalValue(String(value));
-        } else {
-          updateConfig(inputKey, numVal);
-        }
+      safeSetValue(numVal);
     };
 
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === 'Enter') {
+        e.currentTarget.blur();
+      }
+    };
+
+    const scheduleChange = (value: number) => {
+      // Clear any existing active timer immediately
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+
+      timeoutRef.current = setTimeout(() => {
+        safeSetValue(value);
+        timeoutRef.current = null;
+      }, 400);
+    };
+
+    const safeSetValue = (input: number) => {
+      if (isInvalid(input)) {
+        // On blur, if out of bounds, snap it back to the last valid value
+        setLocalValue(String(value));
+      } else {
+        updateConfig(inputKey, input);
+      }
+    };
+
+    const isInvalid = (input: number): boolean => {
+      return (isNaN(input) || (card.min !== undefined && input < card.min) || (card.max !== undefined && input > card.max))
+    }
+
     return (
-        <>
-            <label className={styles.label}>
-                <span>{card.title}</span>
-                <span className={styles.hint}>{card.hint}</span>
-            </label>
-            <input
-                type="number"
-                className={styles.input}
-                step={card.step}
-                value={localValue}
-                disabled={isRunning || isLoading}
-                onChange={handleChange}
-                onBlur={handleBlur}
-            />
-        </>
+      <>
+        <label className={styles.label}>
+          <span>{card.title}</span>
+          <span className={styles.hint}>{card.hint}</span>
+        </label>
+        <input
+          type="number"
+          className={styles.input}
+          step={card.step}
+          value={localValue}
+          disabled={isRunning || isLoading}
+          onChange={handleChange}
+          onKeyDown={handleKeyDown}
+          onBlur={handleBlur}
+        />
+      </>
     );
 }
 

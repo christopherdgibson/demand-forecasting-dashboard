@@ -15,12 +15,12 @@ import {
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatCurrencyValue } from '../../utils/currencyUtils';
 
-import type { DemandProps } from '../../types';
+import type { DemandProps, ForecastChartData } from '../../types';
 import styles from './ForecastChart.module.css';
 
 interface ForecastChartProps {
   controlPanel?: any;
-  chartData: Array<DemandProps>;
+  chartData: Array<ForecastChartData>;
   title?: string;
   dataHistorical: keyof DemandProps;
   dataForecast: keyof DemandProps;
@@ -110,21 +110,13 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
     );
   }
 
-  const formattedData = chartData.map((item) => ({
-        ...item,
-        ci_range:
-        item.ci_lower !== null && item.ci_upper !== null
-        ? [item.ci_lower, item.ci_upper]
-        : null,
-    }));
-
   return (
     <div className={styles.chartCard}>
       {controlPanel}
       <h3 className={styles.title}>{title}</h3>
       <div className={styles.chartContainer}>
         <ResponsiveContainer width="100%" height="100%">
-          <ComposedChart data={formattedData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
+          <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis
               dataKey="date"
@@ -161,8 +153,8 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Area
               type="monotone"
               dataKey="ci_range"
-              fill="#3b82f6"
-              fillOpacity={0.5}
+              fill="#10b981"
+              fillOpacity={0.1}
               stroke="none"
               name={nameCI}
               connectNulls={false}

@@ -31,6 +31,10 @@ export interface ForecastProps extends ForecastInputs {
   filepath?: string;
 }
 
+export interface ForecastChartInputs extends ForecastProps {
+  history?: number;
+}
+
 export interface ModelMetrics {
   aic: number | null;
   bic: number | null;
@@ -53,6 +57,15 @@ export interface ModelResults {
   }
 }
 
+export interface ForecastChartData {
+  date: string;
+  historical: number | null;
+  forecast: number | null;
+  ci_lower: number | null;
+  ci_upper: number | null;
+  ci_range: (number | null)[] | null;
+}
+
 export interface OverlayResults {
   date: string;
   historical: number | null;
@@ -65,6 +78,12 @@ export interface OverlayResults {
   forecast_theta: number | null;
   ci_lower_theta: number | null;
   ci_upper_theta: number | null;
+}
+
+export interface OverlayChartData extends OverlayResults {
+    ets_ci: (number | null)[] | null;
+    sarimax_ci: (number | null)[] | null;
+    theta_ci: (number | null)[] | null;
 }
 
 declare global {

@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 
 import styles from './Controls.module.css';
-import type {CardInputs, ControlsBase, ForecastInputs, ForecastProps, ModelType } from '../../types';
+import type {CardInputs, ControlsBase, ForecastChartInputs, ModelType } from '../../types';
 
-type ForecastControlKeys = keyof ForecastInputs;
+type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'filepath'>;
 
 interface ControlsProps extends ControlsBase {
-  inputs: ForecastProps;
+  inputs: ForecastChartInputs;
   modelType: ModelType;
   onModelChange: (updatedParams: ModelType) => void;
-  onDatasetChange?: (updatedParams: ForecastProps) => void;
-  onForecastChange: (updatedParams: ForecastProps) => void;
+  onHistoryChange: (newPeriods: number) => void;
+  onDatasetChange?: (updatedParams: ForecastChartInputs) => void;
+  onForecastChange: (updatedParams: ForecastChartInputs) => void;
   onRunForecast?: () => void;
   badgeLabel?: string;
   stepLabel?: string;
@@ -23,8 +24,9 @@ interface ControlCardProps<T> extends ControlsBase {
   updateConfig: (field: T, value: number, minValue?: number, maxValue?: number) => void;
 }
 
-export function ControlCard<T extends keyof ForecastProps>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
+export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [isFocused, setIsFocused] = useState<boolean>(false);
     const [localValue, setLocalValue] = useState<string>(String(value));
 
     // Clean up timer if component unmounts
@@ -44,15 +46,30 @@ export function ControlCard<T extends keyof ForecastProps>({card, inputKey, valu
       setLocalValue(rawText);
 
       const numVal = parseFloat(rawText);
-      if (isInvalid(numVal)) return;
+
+      if (isInvalid(numVal)) {
+        // Postpone validate to blur if focused
+        if (isFocused) {
+          return;
+        // Resolve immediately if unfocused (e.g., arrow inputs)
+        } else {
+          resolveInvalid(numVal);
+        return;
+        }
+      }      
       
       scheduleChange(numVal);
     };
 
     const handleBlur = () => {
+      setIsFocused(false)
       const numVal = parseFloat(localValue);
         
       safeSetValue(numVal);
+    };
+
+    const handleFocus = () => {
+      setIsFocused(true)
     };
 
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -76,6 +93,7 @@ export function ControlCard<T extends keyof ForecastProps>({card, inputKey, valu
 
     const safeSetValue = (input: number) => {
       if (isInvalid(input)) {
+
         // On blur, if out of bounds, snap it back to the last valid value
         setLocalValue(String(value));
       } else {
@@ -85,6 +103,14 @@ export function ControlCard<T extends keyof ForecastProps>({card, inputKey, valu
 
     const isInvalid = (input: number): boolean => {
       return (isNaN(input) || (card.min !== undefined && input < card.min) || (card.max !== undefined && input > card.max))
+    }
+
+    const resolveInvalid = (input: number): void => {
+      if (isNaN(input)) setLocalValue(String(value));
+      
+      if (card.min !== undefined && input < card.min) setLocalValue(String(card.min));
+      
+      if (card.max !== undefined && input > card.max) setLocalValue(String(card.max));
     }
 
     return (
@@ -102,33 +128,41 @@ export function ControlCard<T extends keyof ForecastProps>({card, inputKey, valu
           onChange={handleChange}
           onKeyDown={handleKeyDown}
           onBlur={handleBlur}
+          onFocus={handleFocus}
         />
       </>
     );
 }
 
-export function Controls({inputs, modelType, onModelChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
-  const inputKeys: ForecastControlKeys[] = ['alpha', 'steps'];
-  const stepSize = 0.1;
-  const cards: Record<keyof ForecastInputs, CardInputs> = {
-    steps: {
-      title: "Forecast Horizon",
-      hint: "Predicted Periods",
+export function Controls({inputs, modelType, onModelChange, onHistoryChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+  const inputKeys: ForecastHorizonKeys[] = ['history', 'steps'];
+  const cards: Record<ForecastHorizonKeys, CardInputs> = {
+    history: {
+      title: "Historic Horizon",
+      hint: "Previous Periods",
       min: 1,
+      // max: inputs.
       step: 1,
     },
-    alpha: {
-      title: 'Confidence Interval (α)',
-      hint: "0.01 - 1.0",
-      min: 0.01,
-      max: 1,
-      step: 0.01,
+    steps: {
+      title: "Prediction Horizon",
+      hint: "Forecast Periods",
+      min: 1,
+      step: 1,
     }
   };
 
-  const handleInputsChange = <F extends keyof ForecastProps> (
+  const alphaCard = {
+    title: 'Confidence Interval (α)',
+    hint: "0.01 - 1.0",
+    min: 0.01,
+    max: 1,
+    step: 0.01
+  }
+
+  const handleInputsChange = <F extends keyof ForecastChartInputs> (
     field: F,
-    value: ForecastProps[F],
+    value: ForecastChartInputs[F],
     minValue?: number
   ) => {
     if (field == "filepath" && onDatasetChange) {
@@ -136,8 +170,13 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
       ...inputs,
         [field]: value,
       });
+    } else if (field == 'history') {
+      if (minValue !== undefined && typeof(value) == 'number' && value < minValue) {
+        return;
+      }
+      onHistoryChange(Number(value))
     } else {
-      if (minValue !== undefined && typeof(value) == 'number' && value < minValue){
+      if (minValue !== undefined && typeof(value) == 'number' && value < minValue) {
         return;
       }
       onForecastChange({
@@ -157,7 +196,7 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
       <h3 className={styles.subTitle}>Forecast Parameters</h3>
       <div className={styles.grid}>
         {/* Data Source*/}
-        { inputs.filepath &&
+        {inputs.filepath &&
           <div className={styles.fieldGroup}>
             <label className={styles.label}>
               <span>Data Source</span>
@@ -195,6 +234,21 @@ export function Controls({inputs, modelType, onModelChange, onDatasetChange, onF
           </select>
         </div>
 
+        {/* Confidence Interval */}
+        <div className={styles.fieldGroup}>
+            <ControlCard
+                card={alphaCard}
+                inputKey={'alpha'}
+                value={inputs.alpha}
+                updateConfig={handleInputsChange}
+                isRunning={isRunning}
+                isLoading={isLoading}
+            />
+        </div>
+      </div>
+
+      <h3 className={styles.subTitle}>Time Horizon Parameters</h3>
+      <div className={styles.grid}>
         {inputKeys.map((inputKey) => {
             const card = cards[inputKey];
             const rawValue = inputs[inputKey];

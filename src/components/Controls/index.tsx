@@ -31,14 +31,14 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
 
     // Clean up timer if component unmounts
     useEffect(() => {
-        return () => {
-            if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        };
+      return () => {
+        tryClearTimer();
+      };
     }, []);
 
     // Sync local state if parent value changes externally
     useEffect(() => {
-        setLocalValue(String(value));
+      setLocalValue(String(value));
     }, [value]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -48,15 +48,16 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
       const numVal = parseFloat(rawText);
 
       if (isInvalid(numVal)) {
+        tryClearTimer();
         // Postpone validate to blur if focused
         if (isFocused) {
           return;
         // Resolve immediately if unfocused (e.g., arrow inputs)
         } else {
-          resolveInvalid(numVal);
-        return;
+          safeSetValue(numVal);
+          return;
         }
-      }      
+      }
       
       scheduleChange(numVal);
     };
@@ -91,26 +92,29 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
       }, 400);
     };
 
-    const safeSetValue = (input: number) => {
-      if (isInvalid(input)) {
-
-        // On blur, if out of bounds, snap it back to the last valid value
-        setLocalValue(String(value));
-      } else {
-        updateConfig(inputKey, input);
-      }
-    };
-
     const isInvalid = (input: number): boolean => {
       return (isNaN(input) || (card.min !== undefined && input < card.min) || (card.max !== undefined && input > card.max))
     }
 
-    const resolveInvalid = (input: number): void => {
-      if (isNaN(input)) setLocalValue(String(value));
+    const safeSetValue = (input: number): void => {
+      if (isNaN(input)) {
+        setLocalValue(String(value));
+        return;
+      }
       
-      if (card.min !== undefined && input < card.min) setLocalValue(String(card.min));
-      
-      if (card.max !== undefined && input > card.max) setLocalValue(String(card.max));
+      let validVal = input;
+      if (card.min !== undefined && input < card.min) {
+        validVal = card.min;
+      } else if (card.max !== undefined && input > card.max) {
+         validVal = card.max;
+      }
+
+      setLocalValue(String(validVal));
+      updateConfig(inputKey, validVal);
+    };
+
+    const tryClearTimer = () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
     }
 
     return (
@@ -273,7 +277,6 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
       </div>
 
       {inputs.filepath &&
-
         <div className={styles.actions}>
           <button
             className={styles.primaryButton}

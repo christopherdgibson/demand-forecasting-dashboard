@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ForecastInputs, ForecastResults, ModelResults } from '../types';
+import type { CsvLoadInputs, ForecastInputs, ForecastResults, ModelResults } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
@@ -101,10 +101,10 @@ export function usePyodide() {
 
   // 3. Public API: Initial Model Fit
   const fitModels = useCallback(
-    async (filepath: string = 'RSXFSN.csv'): Promise<ModelResults | null> => {
+    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<ModelResults | null> => {
       const historical = await callPyFunction<ModelResults>({
         fnName: 'fit_models',
-        args: [filepath],
+        args: [source, isString, dateCol, targetCol, freq],
       });
 
       return historical;

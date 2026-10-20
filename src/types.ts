@@ -1,5 +1,13 @@
 export type ModelType = 'ets' | 'sarimax' | 'theta';
 
+export interface CsvLoadInputs {
+  source: string;
+  isString?: boolean;
+  dateCol: string;
+  targetCol: string;
+  freq: string
+}
+
 export interface DemandProps {
   date: string;
   historical: number | null;
@@ -28,7 +36,7 @@ export interface ForecastInputs {
 }
 
 export interface ForecastProps extends ForecastInputs {
-  filepath?: string;
+  csvInputs: CsvLoadInputs;
 }
 
 export interface ForecastChartInputs extends ForecastProps {

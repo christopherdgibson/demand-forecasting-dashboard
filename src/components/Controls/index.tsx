@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import styles from './Controls.module.css';
 import type {CardInputs, ControlsBase, ForecastChartInputs, ModelType } from '../../types';
 
-type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'filepath'>;
+type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'csvInputs'>;
 
 interface ControlsProps extends ControlsBase {
   inputs: ForecastChartInputs;
@@ -169,12 +169,7 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
     value: ForecastChartInputs[F],
     minValue?: number
   ) => {
-    if (field == "filepath" && onDatasetChange) {
-      onDatasetChange({
-      ...inputs,
-        [field]: value,
-      });
-    } else if (field == 'history') {
+    if (field == 'history') {
       if (minValue !== undefined && typeof(value) == 'number' && value < minValue) {
         return;
       }
@@ -185,8 +180,8 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
       }
       onForecastChange({
         ...inputs,
-          [field]: value,
-        });
+        [field]: value,
+      });
     }
   };
 
@@ -199,26 +194,6 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
       </div>
       <h3 className={styles.subTitle}>Forecast Parameters</h3>
       <div className={styles.grid}>
-        {/* Data Source*/}
-        {inputs.filepath &&
-          <div className={styles.fieldGroup}>
-            <label className={styles.label}>
-              <span>Data Source</span>
-              <span className={styles.hint}>Input Dataset</span>
-            </label>
-            <select
-              className={styles.input}
-              value={inputs.filepath}
-              // disabled={isRunning || isLoading}
-              disabled={true}
-              onChange={(e) => handleInputsChange('filepath', e.target.value)}
-            >
-              <option value="RSXFSN.csv">FRED Retail Data</option>
-              <option value="option2">Option 2</option>
-              <option value="option3">Option 3</option>
-            </select>
-          </div>
-        }
 
         {/* Forecast Type */}
         <div className={styles.fieldGroup}>
@@ -275,18 +250,6 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
             );
         })}
       </div>
-
-      {inputs.filepath &&
-        <div className={styles.actions}>
-          <button
-            className={styles.primaryButton}
-            onClick={onRunForecast}
-            disabled={isRunning || isLoading}
-          >
-            {isRunning ? 'Running Forecast...' : 'Run Forecast'}
-          </button>
-        </div>
-      }
     {/* </div> */}
     </>
   );

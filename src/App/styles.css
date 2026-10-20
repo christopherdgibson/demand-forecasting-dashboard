@@ -155,6 +155,7 @@
   padding-bottom: 0.25rem;
 }
 
+.active-sample-data, .active-custom-data,
 .active-forecast, .active-ci-overlay {
   opacity: 0;
   max-height: 0;
@@ -165,6 +166,8 @@
   }
 }
 
+.sample-data .active-sample-data,
+.custom-data .active-custom-data,
 .forecast .active-forecast,
 .ci-overlay .active-ci-overlay,
 .show-all .active-forecast,

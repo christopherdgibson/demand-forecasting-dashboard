@@ -134,19 +134,22 @@
   border-top: 1px solid #f1f5f9;
 }
 
-.primaryButton {
-  background-color: #2563eb;
-  color: #ffffff;
+.primaryButton, .secondaryButton {
   font-size: 0.95rem;
-  font-weight: 600;
-  padding: 10px 24px;
-  border: none;
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease, transform 0.1s ease;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.primaryButton {
+  padding: 10px 24px;
+  background-color: #2563eb;
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
 }
 
 .primaryButton:hover:not(:disabled) {
@@ -159,5 +162,27 @@
 
 .primaryButton:disabled {
   background-color: #93c5fd;
+  cursor: not-allowed;
+}
+
+.secondaryButton {
+  padding: 8px 24px;
+  background-color: transparent;
+  color: #2563eb;
+  border: solid 1px #2563eb;
+}
+
+.secondaryButton:hover:not(:disabled) {
+  background-color: #f9f9f9;
+}
+
+.secondaryButton:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.secondaryButton:disabled {
+  color: #8eaff6;
+  border-color: #8eaff6;
+  background-color: #f1f5f9;
   cursor: not-allowed;
 }

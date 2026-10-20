@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import io
 from statsmodels.tsa.exponential_smoothing.ets import ETSModel
 from statsmodels.tsa.statespace.sarimax import SARIMAX
 from statsmodels.tsa.forecasting.theta import ThetaModel
@@ -12,18 +13,81 @@ STATE = {
     "last_date": None
 }
 
+def series_to_frontend_records(series: pd.Series) -> list[dict]:
+    """
+    Converts the pandas Series into the list of dicts for React frontend.
+    """
+    df = series.reset_index()
+    df.columns = ['date', 'historical']
+    df['date'] = df['date'].dt.strftime('%Y-%m-%d')
+    return df.to_dict(orient='records')
+
+def load_and_prepare_dataset(
+    source, 
+    is_string: bool = False, 
+    date_col: str = 'observation_date', 
+    target_col: str = 'RSXFSN', 
+    freq: str = 'MS'):
+    """
+    Unified pipeline for built-in files and user uploads.
+    Standardizes columns to 'date' and 'historical', resamples, and returns records.
+    """
+    # 1. Ingestion (File path vs. uploaded CSV string)
+    if is_string:
+        df = pd.read_csv(io.StringIO(source))
+    else:
+        df = pd.read_csv(source)
+    
+    # 2. Date Parsing & Chronological Sorting (Ensures time-series sequence)
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+
+    df = df.rename(columns={date_col: 'date'})
+    df = df.dropna(subset='date')
+    df = df.sort_values(by='date')
+    df.set_index('date', inplace=True)
+    
+    # 3. Handle Target Column Mapping
+    if target_col != 'historical':
+        if target_col in df.columns:
+            df = df.rename(columns={target_col: 'historical'})
+        elif 'sales' in df.columns:
+            df = df.rename(columns={'sales': 'historical'})
+        else:
+            raise ValueError(f"Target column '{target_col}' not found in dataset.")
+
+    # 4. Numeric Enforcement & NaN Dropping
+    df['historical'] = pd.to_numeric(df['historical'], errors='coerce')
+    df = df.dropna(subset=['historical'])
+    
+    # 5. Resampling, Aggregation, & Gap Filling (DatetimeIndex stays active)
+    # Uses .sum() for data grouping and .ffill().fillna(0) for missing periods
+    # df = df.asfreq(freq)
+    print('freq: ', freq)
+    df = df[['historical']].resample(freq).sum().ffill().fillna(0)
+
+    # 6. Format back into a clean structure for the frontend
+    # result_df = df.reset_index()
+    # result_df.columns = ['date', 'historical']
+    
+    # # Standardize the date output string format (e.g., 'YYYY-MM-DD')
+    # result_df['date'] = result_df['date'].dt.strftime('%Y-%m-%d')
+
+    # Convert to standard Python records (list of dicts) for Pyodide to pass back to JS
+    # return result_df.to_dict(orient='records')
+
+    return df
+    
 # Fetch public dataset (e.g., FRED US Retail Sales)
 # url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
-def fit_models(filepath="RSXFSN.csv"):
+def fit_models(source, 
+    is_string: bool = False, 
+    date_col: str = 'observation_date', 
+    target_col: str = 'RSXFSN', 
+    freq: str = 'MS'):
     """Runs data loading and model fitting (Expensive step — run once)."""
-    df = pd.read_csv(filepath)
-    df['observation_date'] = pd.to_datetime(df['observation_date'])
-    df.set_index('observation_date', inplace=True)
-    df = df.rename(columns={'RSXFSN': 'sales'}).dropna()
+    df = load_and_prepare_dataset(source, is_string, date_col, target_col, freq)
 
-    # Resample to monthly frequency to satisfy statsmodels requirement
-    df = df.asfreq('MS')
-    actuals = df['sales']
+    actuals = df['historical']
 
     last_value = float(actuals.iloc[-1])
     last_date = str(df.index[-1].date())

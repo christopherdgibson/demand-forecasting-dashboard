@@ -14,6 +14,8 @@ import controlsStyles from '../components/Controls/Controls.module.css';
 
 import type { CsvLoadInputs, DemandProps, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData, OverlayResults } from '../types';
 
+type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA';
+
 const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
   source: 'RSXFSN.csv',
   isString: false, 
@@ -21,6 +23,13 @@ const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
   targetCol:'RSXFSN', 
   freq: 'MS'
 }
+
+const SAMPLE_FREQ_MAP: Record<SampleDataKey, string> = {
+  RSXFSN: 'MS', // Advance Retail Sales: Retail Trade (NSA)
+  RSAFSNA: 'MS', // Advance Retail Sales: Retail Trade and Food Services (NSA)
+  ECOMPCTNSA: 'QS' // E-Commerce Retail Sales as a Percent of Total Sales (NSA)
+}
+
 const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
 
@@ -124,6 +133,7 @@ export default function App() {
   const [activeChartTab, setActiveChartTab] = useState<string | null>('forecast');
   const [activeSourceTab, setActiveSourceTab] = useState<string | null>('sample-data');
   const [isRunning, setIsRunning] = useState(false);
+  const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>('RSXFSN');
   const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
   const [selectedPastPeriods, setSelectedPastPeriods] = useState<number>(24);
   const [forecastInputs, setForecastInputs] = useState<ForecastProps>({csvInputs: DEFAULT_CSV_INPUTS, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
@@ -158,7 +168,7 @@ export default function App() {
     setIsCurrentData(isSample);
   }, [isSample]);
 
-  async function runForecast({csvInputs, steps, alpha}: ForecastProps): Promise<void> {
+  async function runForecast({steps, alpha, csvInputs}: ForecastProps): Promise<void> {
     setForecastInputs({csvInputs, steps, alpha})
     const modelResults = await fitModels(csvInputs);
     const adjustedHistory = modelResults !== null ? adjustHistory(modelResults.data) : null;
@@ -281,15 +291,18 @@ export default function App() {
                 <span className={controlsStyles.hint}>Input Dataset</span>
               </label>
               <select
-                className={controlsStyles.input}
+                className={`${controlsStyles.input} ${controlsStyles.dropdown}`}
                 value={controlsStyles.filepath}
-                // disabled={isRunning || isLoading}
-                disabled={true}
-                onChange={(e) => updateSampleData(e.target.value)}
+                disabled={isRunning || isLoading}
+                // disabled={true}
+                onChange={(e) => {
+                  setSelectedSampleData(e.target.value as SampleDataKey);
+                  setIsCurrentData(false);
+                }}
               >
-                <option value="RSXFSN.csv">FRED Retail Data</option>
-                <option value="option2">Option 2</option>
-                <option value="option3">Option 3</option>
+                <option value="RSXFSN">FRED Retail Data</option>
+                <option value="RSAFSNA">FRED Retail and Food Data</option>
+                <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
               </select>
             </div>
             <div className={controlsStyles.actions}>
@@ -297,7 +310,7 @@ export default function App() {
                 className={controlsStyles.secondaryButton}
                 disabled={isCurrentData}
                 onClick={() => {
-                  setForecastInputs({...forecastInputs, csvInputs: DEFAULT_CSV_INPUTS});
+                  setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
                   setIsCurrentData(true);
                 }}
               >

@@ -35,11 +35,16 @@ export function usePyodide() {
         //py.FS.writeFile('config.py', configSrc);
 
         // Fetch CSV file and write it to MEMFS
-        const csvResponse = await fetch(`${base}data/inputs/RSXFSN.csv`);
-        const csvData = await csvResponse.text();
+        const [csvRSXFSN, csvRSAFSNA, csvECOMPCTNSA] = await Promise.all([
+          fetch(`${base}data/inputs/RSXFSN.csv`).then((res) => res.text()),
+          fetch(`${base}data/inputs/RSAFSNA.csv`).then((res) => res.text()),
+          fetch(`${base}data/inputs/ECOMPCTNSA.csv`).then((res) => res.text()),
+        ]);
 
-        // Write file into Pyodide's virtual filesystem root as 'RSXFSN.csv'
-        py.FS.writeFile('RSXFSN.csv', csvData);
+        // Write files into Pyodide's virtual filesystem root as 'fileName.csv'
+        py.FS.writeFile('RSXFSN.csv', csvRSXFSN);
+        py.FS.writeFile('RSAFSNA.csv', csvRSAFSNA);
+        py.FS.writeFile('ECOMPCTNSA.csv', csvECOMPCTNSA);
 
         // Execute main.py once to load functions into Python's global scope
         await py.runPythonAsync(mainSrc);

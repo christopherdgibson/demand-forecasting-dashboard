@@ -77,7 +77,6 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
 
   return (
     <div className={chartStyles.chartCard}>
-      {/* <h3>Upload Custom Demand Dataset</h3> */}
       <div className={styles.header}>
         <h2 className={styles.title}>Upload Custom Demand Dataset</h2>
         <span className={styles.badge}>Custom Dataset</span>
@@ -93,7 +92,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
                 <span className={styles.hint}>Dates</span>
               </label>
               <select
-                className={styles.input}
+                className={`${styles.input} ${styles.dropdown}`}
                 value={selectedDateCol}
                 onChange={(e) => setSelectedDateCol(e.target.value)}
               >
@@ -111,7 +110,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
                 <span className={styles.hint}>Data Values</span>
               </label>
               <select
-                className={styles.input}
+                className={`${styles.input} ${styles.dropdown}`}
                 value={selectedTargetCol}
                 onChange={(e) => setSelectedTargetCol(e.target.value)}
               >
@@ -128,14 +127,15 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
                 <span className={styles.hint}>Data Values</span>
               </label>
               <select
-                className={styles.input}
+                className={`${styles.input} ${styles.dropdown}`}
                 value={selectedFreq}
                 onChange={(e) => setSelectedFreq(e.target.value)}
               >
                 <option key={'Annual'} value={'A'}>Annual</option>
+                <option key={'Quarterly'} value={'QS'}>Quarterly</option>
                 <option key={'Monthly'} value={'MS'}>Monthly</option>
                 <option key={'Weekly'} value={'W'}>Weekly</option>
-                <option key={'Daily'} value={'D'}>Weekly</option>
+                <option key={'Daily'} value={'D'}>Daily</option>
               </select>
             </div>
           </div>

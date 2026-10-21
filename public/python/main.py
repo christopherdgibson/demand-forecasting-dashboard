@@ -10,7 +10,8 @@ from typing import Any, Tuple
 STATE = {
     "models": {},
     "metrics": {},
-    "last_date": None
+    "last_date": None,
+    "freq": None
 }
 
 def series_to_frontend_records(series: pd.Series) -> list[dict]:
@@ -92,12 +93,14 @@ def fit_models(source,
     last_value = float(actuals.iloc[-1])
     last_date = str(df.index[-1].date())
 
-    STATE["last_date"] = last_date
+    STATE["last_date"] = pd.to_datetime(last_date)
+    STATE["freq"] = freq
+    sp = get_seasonal_period(freq)
 
     # 1. Fit ETS Model
     try:
         ets_fit = ETSModel(
-            actuals, error='add', trend='add', seasonal='add', seasonal_periods=12
+            actuals, error='add', trend='add', seasonal='add', seasonal_periods=sp
         ).fit()
         STATE["models"]["ets"] = ets_fit
         ets_resid = actuals - ets_fit.fittedvalues
@@ -113,7 +116,7 @@ def fit_models(source,
     # 2. Fit SARIMAX Model (Order: p=1, d=1, q=1, Seasonal: P=1, D=1, Q=1, s=12)
     try:
         sarimax_fit = SARIMAX(
-            actuals, order=(1, 1, 1), seasonal_order=(1, 1, 1, 12)
+            actuals, order=(1, 1, 1), seasonal_order=(1, 1, 1, sp)
         ).fit(disp=False)
         STATE["models"]["sarimax"] = sarimax_fit
         sarimax_resid = actuals - sarimax_fit.fittedvalues
@@ -129,7 +132,7 @@ def fit_models(source,
 
     # 3. Fit Theta Model
     try:
-        theta_fit = ThetaModel(actuals, period=12).fit()
+        theta_fit = ThetaModel(actuals, period=sp).fit()
         STATE["models"]["theta"] = theta_fit
         
         # Extract metrics or residuals
@@ -178,10 +181,12 @@ def generate_forecasts(forecast_steps=12, alpha=0.05):
     
     steps = int(forecast_steps)
     last_date = STATE["last_date"]
+    freq = STATE["freq"]
 
-    forecast_start = pd.to_datetime(last_date)+pd.DateOffset(months=1)
-    forecast_end = pd.to_datetime(last_date)+pd.DateOffset(months=steps)
-
+    offset_start, offset_end = get_seasonal_offsets(freq, steps)
+    forecast_start = last_date + offset_start
+    forecast_end = last_date + offset_end
+    
     forecast_maps = {}
 
     for modelType, model in STATE["models"].items():
@@ -243,3 +248,27 @@ def get_theta_forecasts(model: Any, steps: int, alpha: float) -> Tuple[Any, Any,
     mean_series = model.forecast(steps=steps)
     pred_ci = model.prediction_intervals(steps=steps, alpha=alpha)
     return mean_series, pred_ci['lower'], pred_ci['upper']
+
+def get_seasonal_period(freq: str) -> int:
+    """Returns the appropriate seasonal period based on pandas frequency."""
+    freq = freq.upper()
+    if freq.startswith('M'):
+        return 12
+    elif freq.startswith('Q'):
+        return 4
+    elif freq.startswith('W'):
+        return 52
+    elif freq.startswith('D'):
+        return 7  # 7-day weekly cycle is safest for daily; 365 can break statsmodels
+    else:
+        return 1  # Default fallback (no seasonality)
+
+def get_seasonal_offsets(freq: str, steps: int) -> Tuple[Any, Any]:
+    if freq.startswith('M'):
+        return pd.DateOffset(months=1), pd.DateOffset(months=steps)
+    elif freq.startswith('Q'):
+        return pd.DateOffset(months=3), pd.DateOffset(months=3 * steps)
+    elif freq.startswith('W'):
+        return pd.DateOffset(weeks=1), pd.DateOffset(weeks=steps)
+    elif freq.startswith('D'):
+        return pd.DateOffset(days=1), pd.DateOffset(days=steps)

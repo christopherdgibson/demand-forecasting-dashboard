@@ -1,0 +1,71 @@
+.guide-container {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+    font-family: sans-serif;
+}
+
+.guide-content {
+    font-size: 0.95rem;
+    color: #495057;
+    line-height: 1.5;
+    max-height: 0px;
+    overflow: hidden;
+    transition: all 0.2s ease-in-out;
+
+    &.expanded {
+        max-height: 1000px;
+    }
+}
+
+.guide-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.guide-title {
+    margin: 0;
+    color: #333;
+    font-size: 1.1rem;
+}
+
+.guide-button {
+    background: none;
+    border: none;
+    color: #0066cc;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.guide-subheader {
+    margin: 12px 0 6px 0;
+    color: #212529;
+    font-size: 0.9rem;
+}
+
+.guide-list {
+    margin: 0 0 10px 0;
+    padding-left: 20px;
+
+    /* li {
+        marker: none;
+        list-style: lower-roman;
+    } */
+}
+
+.dropdown-arrow {
+    width: 12px;
+    height: 12px;
+    transition: all 0.1s ease-in-out;
+
+    &.expanded{
+        transform: rotate(180deg);
+    }
+
+    path {
+        fill: currentColor;
+    }
+}

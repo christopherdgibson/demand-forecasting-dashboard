@@ -63,7 +63,6 @@ def load_and_prepare_dataset(
     # 5. Resampling, Aggregation, & Gap Filling (DatetimeIndex stays active)
     # Uses .sum() for data grouping and .ffill().fillna(0) for missing periods
     # df = df.asfreq(freq)
-    print('freq: ', freq)
     df = df[['historical']].resample(freq).sum().ffill().fillna(0)
 
     # 6. Format back into a clean structure for the frontend

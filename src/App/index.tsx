@@ -307,14 +307,14 @@ export default function App() {
             </div>
             <div className={controlsStyles.actions}>
               <button
-                className={controlsStyles.secondaryButton}
+                className={controlsStyles.primaryButton}
                 disabled={isCurrentData}
                 onClick={() => {
                   setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
                   setIsCurrentData(true);
                 }}
               >
-                {isCurrentData ? "Current Data" : "Update Data"}
+                {isCurrentData ? "Updated" : "Update Data"}
               </button>
             </div>
           </div>
@@ -366,9 +366,7 @@ export default function App() {
               modelType={selectedModel}
               onModelChange={handleModelChange}
               onHistoryChange={handleHistoryChange}
-              onDatasetChange={runForecast}
               onForecastChange={handleForecastChange}
-              onRunForecast={handleRun}
               isRunning={isRunning}
               isLoading={isLoading}
             />

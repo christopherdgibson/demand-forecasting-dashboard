@@ -35,12 +35,12 @@ export interface ForecastInputs {
   alpha: number;
 }
 
-export interface ForecastProps extends ForecastInputs {
-  csvInputs: CsvLoadInputs;
+export interface ForecastChartInputs extends ForecastInputs {
+  history?: number;
 }
 
-export interface ForecastChartInputs extends ForecastProps {
-  history?: number;
+export interface ForecastProps extends ForecastChartInputs {
+  csvInputs: CsvLoadInputs;
 }
 
 export interface ModelMetrics {

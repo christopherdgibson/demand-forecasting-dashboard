@@ -32,7 +32,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
     setIsCurrentData(!isSample);
   }, [isSample]);
 
-  // Step A: Read file and extract headers on selection
+  // Read file and extract headers on selection
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -59,7 +59,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
     reader.readAsText(file);
   };
 
-  // Step B: Submit the final mapping and full text to Pyodide
+  // Submit the final mapping and full text to Pyodide
   const handleSubmit = () => {
     if (!csvContent || !selectedDateCol || !selectedTargetCol || !selectedFreq) {
       return;
@@ -141,11 +141,11 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
           </div>
           <div className={styles.actions}>
             <button
-              className={styles.secondaryButton}
+              className={styles.primaryButton}
               disabled={isCurrentData}
               onClick={handleSubmit}
             >
-              {isCurrentData ? "Current Data" : "Update Data"}
+              {isCurrentData ? "Updated" : "Update Data"}
             </button>
           </div>
         </>

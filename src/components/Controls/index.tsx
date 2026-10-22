@@ -10,9 +10,7 @@ interface ControlsProps extends ControlsBase {
   modelType: ModelType;
   onModelChange: (updatedParams: ModelType) => void;
   onHistoryChange: (newPeriods: number) => void;
-  onDatasetChange?: (updatedParams: ForecastChartInputs) => void;
   onForecastChange: (updatedParams: ForecastChartInputs) => void;
-  onRunForecast?: () => void;
   badgeLabel?: string;
   stepLabel?: string;
 }
@@ -138,7 +136,7 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
     );
 }
 
-export function Controls({inputs, modelType, onModelChange, onHistoryChange, onDatasetChange, onForecastChange, onRunForecast, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+export function Controls({inputs, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
   const inputKeys: ForecastHorizonKeys[] = ['history', 'steps'];
   const cards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
@@ -186,7 +184,6 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
   };
 
   return (
-    // <div className={styles.controlsCard}>
     <>
       <div className={styles.header}>
         <h2 className={styles.title}>Model Parameters</h2>
@@ -250,7 +247,6 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onD
             );
         })}
       </div>
-    {/* </div> */}
     </>
   );
 };

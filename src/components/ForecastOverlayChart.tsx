@@ -10,12 +10,12 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-import { Controls} from '../components/Controls';
+import { ControlPanel} from '../components/Controls';
 import { roundNumber } from '../utils/numberUtils';
 import { CustomLegend } from './CustomLegend';
 import { CustomTooltip } from './CustomTooltip';
 
-import chartStyles from './ForecastChart/ForecastChart.module.css'
+import '../App/styles.css';
 
 import type { ForecastChartInputs, ModelType, OverlayChartData } from '../types';
 
@@ -71,8 +71,8 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
     const seriesOrderActive = [...seriesOrder, activeCI[modelType]];
 
     return (
-        <div className={chartStyles.chartCard}>
-            <Controls
+        <div className={'chart-card'}>
+            <ControlPanel
                 inputs={{alpha: inputs.alpha, steps: inputs.steps, history: inputs.history}}
                 modelType={modelType}
                 onModelChange={onModelChange}
@@ -81,8 +81,8 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                 isRunning={isRunning}
             />
           
-            <h3 className={chartStyles.title}>Demand Forecast Overlay</h3>
-            <div className={chartStyles.chartContainer}>
+            <h3 className={'chart-title'}>Demand Forecast Overlay</h3>
+            <div className={'chart-container'}>
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

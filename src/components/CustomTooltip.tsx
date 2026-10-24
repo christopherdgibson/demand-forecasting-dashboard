@@ -2,7 +2,7 @@ import { TooltipContentProps } from 'recharts';
 
 import type { ValueType, NameType } from 'recharts/types/component/DefaultTooltipContent';
 import { formatCurrencyValue } from '../utils/currencyUtils';
-import styles from './Controls/Controls.module.css';
+import '../App/styles.css';
 
 interface CustomTooltipProps<T extends string> {
   props: TooltipContentProps<ValueType, NameType>;
@@ -24,7 +24,7 @@ export function CustomTooltip<T extends string>({props, seriesOrder, formatType}
   );
 
   return (
-    <div className={styles.tooltip}>
+    <div className={'chart-tooltip'}>
       <p>{label}</p>
       {sorted.map((entry) => (
         <p key={entry.name} style={{ color: entry.color }}>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
-import styles from './Controls.module.css';
-import type {CardInputs, ControlsBase, ForecastChartInputs, ModelType } from '../../types';
+import '../App/styles.css';
+import type {CardInputs, ControlsBase, ForecastChartInputs, ModelType } from '../types';
 
 type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'csvInputs'>;
 
@@ -22,7 +22,7 @@ interface ControlCardProps<T> extends ControlsBase {
   updateConfig: (field: T, value: number, minValue?: number, maxValue?: number) => void;
 }
 
-export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
+function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value, updateConfig, isRunning, isLoading}: ControlCardProps<T>) {
     const timeoutRef = useRef<NodeJS.Timeout | null>(null);
     const [isFocused, setIsFocused] = useState<boolean>(false);
     const [localValue, setLocalValue] = useState<string>(String(value));
@@ -117,13 +117,13 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
 
     return (
       <>
-        <label className={styles.label}>
+        <label className={'label'}>
           <span>{card.title}</span>
-          <span className={styles.hint}>{card.hint}</span>
+          <span className={'hint'}>{card.hint}</span>
         </label>
         <input
           type="number"
-          className={styles.input}
+          className={'input'}
           step={card.step}
           value={localValue}
           disabled={isRunning || isLoading}
@@ -136,7 +136,7 @@ export function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey
     );
 }
 
-export function Controls({inputs, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+export function ControlPanel({inputs, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
   const inputKeys: ForecastHorizonKeys[] = ['history', 'steps'];
   const cards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
@@ -185,21 +185,21 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onF
 
   return (
     <>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Model Parameters</h2>
-        <span className={styles.badge}>{badgeLabel}</span>
+      <div className={'controls-header'}>
+        <h2 className={'controls-title'}>Model Parameters</h2>
+        <span className={'badge'}>{badgeLabel}</span>
       </div>
-      <h3 className={styles.subTitle}>Forecast Parameters</h3>
-      <div className={styles.grid}>
+      <h3 className={'controls-subTitle'}>Forecast Parameters</h3>
+      <div className={'controls-grid'}>
 
         {/* Forecast Type */}
-        <div className={styles.fieldGroup}>
-          <label className={styles.label}>
+        <div className={'field-group'}>
+          <label className={'label'}>
             <span>Demand Model</span>
-            <span className={styles.hint}>Forecast Model</span>
+            <span className={'hint'}>Forecast Model</span>
           </label>
           <select
-            className={styles.input}
+            className={'input dropdown'}
             value={modelType}
             disabled={isRunning || isLoading}
             onChange={(e) => onModelChange(e.target.value as ModelType)}
@@ -211,7 +211,7 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onF
         </div>
 
         {/* Confidence Interval */}
-        <div className={styles.fieldGroup}>
+        <div className={'field-group'}>
             <ControlCard
                 card={alphaCard}
                 inputKey={'alpha'}
@@ -223,8 +223,8 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onF
         </div>
       </div>
 
-      <h3 className={styles.subTitle}>Time Horizon Parameters</h3>
-      <div className={styles.grid}>
+      <h3 className={'controls-subTitle'}>Time Horizon Parameters</h3>
+      <div className={'controls-grid'}>
         {inputKeys.map((inputKey) => {
             const card = cards[inputKey];
             const rawValue = inputs[inputKey];
@@ -234,7 +234,7 @@ export function Controls({inputs, modelType, onModelChange, onHistoryChange, onF
             }
 
             return (
-                <div key={String(inputKey)} className={styles.fieldGroup}>
+                <div key={String(inputKey)} className={'field-group'}>
                     <ControlCard
                         card={card}
                         inputKey={inputKey}

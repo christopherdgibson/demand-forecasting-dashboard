@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Controls } from '../components/Controls';
+import { ControlPanel } from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
 import { Metrics } from '../components/MetricsCard';
@@ -14,8 +14,6 @@ import { InstructionsCard } from '../components/InstructionsCard';
 import { adjustHistory, convertChartData, reshapeRows } from '../utils/dataUtils';
 
 import './styles.css'
-import chartStyles from '../components/ForecastChart/ForecastChart.module.css';
-import controlsStyles from '../components/Controls/Controls.module.css';
 
 import type { CsvLoadInputs, ErrorMessage, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData, OverlayResults } from '../types';
 
@@ -37,6 +35,12 @@ const SAMPLE_FREQ_MAP: Record<SampleDataKey, string> = {
 
 const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
+
+const modelNameMap: Record<ModelType, string> = {
+  ets: 'ETS',
+  sarimax: 'SARIMAX',
+  theta: 'Theta'
+}
 
 
 export default function App() {
@@ -165,7 +169,7 @@ export default function App() {
       const header = 'Simulation execution failed';
       const error: ErrorMessage =  {
         success: false,
-        header: 'Simulation execution failed',
+        header,
         type: 'unknown',
         message: raw,
       };
@@ -222,19 +226,19 @@ export default function App() {
           </div>
           <div className='active-sample-data'>                  
             <h2 className="section-heading">Use Sample Data</h2>
-            <div className={chartStyles.chartCard}>
-              <div className={controlsStyles.header}>
-                <h2 className={controlsStyles.title}>Select Sample Demand Dataset</h2>
-                <span className={controlsStyles.badge}>Demand Dataset</span>
+            <div className={'chart-card'}>
+              <div className={'controls-header'}>
+                <h2 className={'controls-title'}>Select Sample Demand Dataset</h2>
+                <span className={'badge'}>Demand Dataset</span>
               </div>
-              <div className={controlsStyles.fieldGroup}>
-                <label className={controlsStyles.label}>
+              <div className={'field-group'}>
+                <label className={'label'}>
                   <span>Data Source</span>
-                  <span className={controlsStyles.hint}>Input Dataset</span>
+                  <span className={'hint'}>Input Dataset</span>
                 </label>
                 <select
-                  className={`${controlsStyles.input} ${controlsStyles.dropdown}`}
-                  value={controlsStyles.filepath}
+                  className={'input dropdown'}
+                  value={selectedSampleData}
                   disabled={isRunning || isLoading}
                   // disabled={true}
                   onChange={(e) => {
@@ -247,9 +251,9 @@ export default function App() {
                   <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
                 </select>
               </div>
-              <div className={controlsStyles.actions}>
+              <div className={'actions'}>
                 <button
-                  className={controlsStyles.primaryButton}
+                  className={'primary-button'}
                   disabled={isCurrentData}
                   onClick={() => {
                     setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
@@ -265,9 +269,9 @@ export default function App() {
             <h2 className="section-heading">Upload Custom Data</h2>
             <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
           </div>
-            <div className={controlsStyles.actions}>
+            <div className={'actions'}>
               <button
-                className={controlsStyles.primaryButton}
+                className={'primary-button'}
                 onClick={handleRun}
                 disabled={isRunning || isLoading}
               >
@@ -302,8 +306,8 @@ export default function App() {
           {/* Tab 1: Demand Forecast */}
           <div className='active-forecast'>                  
             <h2 className="section-heading">Demand Forecast</h2>
-            <div className={chartStyles.chartCard}>  
-              <Controls
+            <div className={'chart-card'}>  
+              <ControlPanel
                 inputs={chartInputs}
                 modelType={selectedModel}
                 onModelChange={handleModelChange}
@@ -314,6 +318,7 @@ export default function App() {
               />
               {chartData && (
                 <ForecastChart
+                  title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[selectedModel]} model)`}
                   chartData={chartData}
                   dataHistorical={"historical"}
                   dataForecast={"forecast"}

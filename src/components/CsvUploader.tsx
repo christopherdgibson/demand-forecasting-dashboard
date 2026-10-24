@@ -2,8 +2,7 @@ import { ChangeEvent, useEffect, useState } from "react";
 
 import type { CsvLoadInputs } from "../types";
 
-import styles from "./Controls/Controls.module.css";
-import chartStyles from "./ForecastChart/ForecastChart.module.css";
+import '../App/styles.css';
 
 interface CsvUploaderProps {
   isSample: boolean;
@@ -76,23 +75,23 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
   };
 
   return (
-    <div className={chartStyles.chartCard}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>Upload Custom Demand Dataset</h2>
-        <span className={styles.badge}>Custom Dataset</span>
+    <div className={'chart-card'}>
+      <div className={'controls-header'}>
+        <h2 className={'controls-title'}>Upload Custom Demand Dataset</h2>
+        <span className={'badge'}>Custom Dataset</span>
       </div>
       <input type="file" accept=".csv" onChange={handleFileChange} />
 
       {columns.length > 0 && (
         <>
-          <div className={styles.grid}>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>
+          <div className={'controls-grid'}>
+            <div className={'field-group'}>
+              <label className={'label'}>
                 Date Column:
-                <span className={styles.hint}>Dates</span>
+                <span className={'hint'}>Dates</span>
               </label>
               <select
-                className={`${styles.input} ${styles.dropdown}`}
+                className={`${'input'} ${'dropdown'}`}
                 value={selectedDateCol}
                 onChange={(e) => setSelectedDateCol(e.target.value)}
               >
@@ -104,13 +103,13 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
               </select>
             </div>
 
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>
+            <div className={'field-group'}>
+              <label className={'label'}>
                 Demand / Target Column:
-                <span className={styles.hint}>Data Values</span>
+                <span className={'hint'}>Data Values</span>
               </label>
               <select
-                className={`${styles.input} ${styles.dropdown}`}
+                className={'input dropdown'}
                 value={selectedTargetCol}
                 onChange={(e) => setSelectedTargetCol(e.target.value)}
               >
@@ -121,13 +120,13 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
                 ))}
               </select>
             </div>
-            <div className={styles.fieldGroup}>
-              <label className={styles.label}>
+            <div className={'field-group'}>
+              <label className={'label'}>
                 Frequency:
-                <span className={styles.hint}>Data Values</span>
+                <span className={'hint'}>Data Values</span>
               </label>
               <select
-                className={`${styles.input} ${styles.dropdown}`}
+                className={'input dropdown'}
                 value={selectedFreq}
                 onChange={(e) => setSelectedFreq(e.target.value)}
               >
@@ -139,9 +138,9 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
               </select>
             </div>
           </div>
-          <div className={styles.actions}>
+          <div className={'actions'}>
             <button
-              className={styles.primaryButton}
+              className={'primary-button'}
               disabled={isCurrentData}
               onClick={handleSubmit}
             >

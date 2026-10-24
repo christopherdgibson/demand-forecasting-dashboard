@@ -11,11 +11,11 @@ import {
   RenderableText
 } from 'recharts';
 
-import { CustomLegend } from '../CustomLegend';
-import { CustomTooltip } from '../CustomTooltip';
+import { CustomLegend } from './CustomLegend';
+import { CustomTooltip } from './CustomTooltip';
 
-import type { DemandProps, ForecastChartData } from '../../types';
-import styles from './ForecastChart.module.css';
+import '../App/styles.css';
+import type { DemandProps, ForecastChartData } from '../types';
 
 interface ForecastChartProps {
   controlPanel?: any;
@@ -63,8 +63,8 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
   return (
     <>
       {controlPanel}
-      <h3 className={styles.title}>{title}</h3>
-      <div className={styles.chartContainer}>
+      <h3 className={'chart-title'}>{title}</h3>
+      <div className={'chart-container'}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

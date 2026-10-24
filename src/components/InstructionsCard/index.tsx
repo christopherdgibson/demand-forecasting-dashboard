@@ -21,7 +21,7 @@ export function InstructionsCard() {
       </div>
 
         <div className={isExpanded ? 'guide-content expanded' : 'guide-content'}>
-          <p>
+          <p className={'guide-intro'}>
             Welcome to the serverless demand forecasting dashboard! Use this tool to analyze time-series patterns, generate predictions, and experiment with different statistical models entirely in your browser.
           </p>
 

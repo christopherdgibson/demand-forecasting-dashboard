@@ -32,6 +32,11 @@
     font-size: 1.1rem;
 }
 
+.guide-intro {
+    border-top: 1px solid #e9ecef;
+    padding-top: 10px;
+}
+
 .guide-button {
     background: none;
     border: none;
@@ -54,18 +59,4 @@
         marker: none;
         list-style: lower-roman;
     } */
-}
-
-.dropdown-arrow {
-    width: 12px;
-    height: 12px;
-    transition: all 0.1s ease-in-out;
-
-    &.expanded{
-        transform: rotate(180deg);
-    }
-
-    path {
-        fill: currentColor;
-    }
 }

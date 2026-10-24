@@ -30,6 +30,19 @@ export interface CardInputs {
   step?: number;
 }
 
+export interface ErrorMessage {
+  success: false;
+  header: string;
+  type: string;
+  message: string;
+  trace?: string;
+}
+
+export interface SuccessResult<T> {
+  success: true;
+  result: T;
+}
+
 export interface ForecastInputs {
   steps?: number;
   alpha: number;

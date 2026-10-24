@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Controls } from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
@@ -8,6 +8,8 @@ import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { roundNumber } from '../utils/numberUtils';
 
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ErrorModal } from '../components/ErrorModal';
 import { InstructionsCard } from '../components/InstructionsCard';
 import { adjustHistory, convertChartData, reshapeRows } from '../utils/dataUtils';
 
@@ -15,7 +17,7 @@ import './styles.css'
 import chartStyles from '../components/ForecastChart/ForecastChart.module.css';
 import controlsStyles from '../components/Controls/Controls.module.css';
 
-import type { CsvLoadInputs, DemandProps, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData, OverlayResults } from '../types';
+import type { CsvLoadInputs, ErrorMessage, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData, OverlayResults } from '../types';
 
 type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA';
 
@@ -40,6 +42,9 @@ const DEFAULT_ALPHA = 0.05;
 export default function App() {
   const [activeChartTab, setActiveChartTab] = useState<string | null>('forecast');
   const [activeSourceTab, setActiveSourceTab] = useState<string | null>('sample-data');
+  const hasFetchedRef = useRef(false);
+  const [activeErrorModal, setActiveErrorModal] = useState<boolean>(false);
+  const [modalError, setModalError] = useState<ErrorMessage | null>(null);
   const [isRunning, setIsRunning] = useState(false);
   const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>('RSXFSN');
   const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
@@ -64,7 +69,8 @@ export default function App() {
 
   // Load and fit model on initial mount
   useEffect(() => {
-    if (isLoading) return;
+    if (isLoading || hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     runForecast(forecastInputs);
   }, [isLoading]);
 
@@ -78,7 +84,13 @@ export default function App() {
 
   async function runForecast({steps, alpha, csvInputs}: ForecastProps): Promise<void> {
     setForecastInputs({csvInputs, steps, alpha})
-    const modelResults = await fitModels(csvInputs);
+    const modelResponse = await fitModels(csvInputs);
+    if (modelResponse && modelResponse.success === false) {
+      handleErrorResponse(modelResponse);
+      return;
+    }
+
+    const modelResults = modelResponse !== null ? modelResponse.result : null;
     const adjustedHistory = modelResults !== null ? adjustHistory(modelResults.data) : null;
     setFullAdjustedHistory(adjustedHistory);
 
@@ -88,9 +100,14 @@ export default function App() {
       setMetrics(modelMetrics[selectedModel]);
     }
 
-    const forecastResults = await updateForecasts({steps, alpha});
-    if (adjustedHistory && forecastResults) {
-      updateChartData(adjustedHistory, forecastResults)
+    const forecastResponse = await updateForecasts({steps, alpha});
+    if (forecastResponse && forecastResponse.success === false) {
+      handleErrorResponse(forecastResponse);
+      return;
+    }
+
+    if (adjustedHistory && forecastResponse) {
+      updateChartData(adjustedHistory, forecastResponse.result)
     }
   }
 
@@ -106,9 +123,13 @@ export default function App() {
     setForecastInputs({...forecastInputs, steps, alpha});
     setMetrics(metricsMap[selectedModel]); // historical metrics should not need updating with forecast changes?
 
-    const forecastResults = await updateForecasts({steps, alpha}); 
-    if (forecastResults && fullAdjustedHistory) {
-      updateChartData(fullAdjustedHistory, forecastResults);
+    const forecastResponse = await updateForecasts({steps, alpha});
+    if (forecastResponse && forecastResponse.success === false) {
+      handleErrorResponse(forecastResponse);
+      return;
+    }
+    if (forecastResponse && fullAdjustedHistory) {
+      updateChartData(fullAdjustedHistory, forecastResponse.result);
     }
   }
   
@@ -135,183 +156,195 @@ export default function App() {
     setChartData(convertChartData(selectedModel, combinedDataset))
   }
 
-  // TODO: With more datasets will need to convert value into keys for csvInput array map
-  const updateSampleData = (
-    value: CsvLoadInputs['source']
-  ) => {
-    setForecastInputs({...forecastInputs, csvInputs: {...forecastInputs.csvInputs, source: value, isString: false}})
-  }
-
   const handleRun = async () => {
     setIsRunning(true);
     try {
       runForecast(forecastInputs);
     } catch (err) {
-      console.error('Simulation execution failed:', err);
+      const raw = err instanceof Error ? err.message : String(err);
+      const header = 'Simulation execution failed';
+      const error: ErrorMessage =  {
+        success: false,
+        header: 'Simulation execution failed',
+        type: 'unknown',
+        message: raw,
+      };
+
+      handleErrorResponse(error);
+      console.error(header, raw);
     } finally {
       setIsRunning(false);
     }
   };
 
-  const handleDataReady = async ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
+  const handleDataReady = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
     setForecastInputs({...forecastInputs, csvInputs: {source, isString, dateCol, targetCol, freq}})
   };
 
+  function handleErrorResponse(error: ErrorMessage) {
+    setModalError(error);
+    setActiveErrorModal(true);
+  }
 
   return (
-    <div className={'app-container'}>
-      <h1 className={'title'}>Demand Forecast Dashboard</h1>
+    <ErrorBoundary>
+      <div className={'app-container'}>
+        <h1 className={'title'}>Demand Forecast Dashboard</h1>
 
-      {isLoading && ( 
-        <div className={'loading-container'}>
-          <h2 className={'loading-title'}>Loading Python Environment...</h2>
-          <p className={'loading-text'}>Downloading Pyodide WASM runtime into browser.</p>
-        </div>
-      )}
+        {isLoading && ( 
+          <div className={'loading-container'}>
+            <h2 className={'loading-title'}>Loading Python Environment...</h2>
+            <p className={'loading-text'}>Downloading Pyodide WASM runtime into browser.</p>
+          </div>
+        )}
 
-      <InstructionsCard/>
+        <InstructionsCard/>
+        {activeErrorModal && !isLoading && !isRunning && modalError &&
+          <ErrorModal activeModal={activeErrorModal} setActiveModal={setActiveErrorModal} error={modalError}/>
+        }
 
-      <Metrics metrics={metrics} />
-      <div className={`${activeSourceTab}`}>
-        {/* Tab Navigation */}
-        <div className="nav-tabs">
-          <button
-            onClick={() => setActiveSourceTab('sample-data')}
-            className={`tab-btn ${activeSourceTab === 'sample-data' ? 'active' : ''}`}
-          >
-            Sample Data
-          </button>
-          <button
-            onClick={() => setActiveSourceTab('custom-data')}
-            className={`tab-btn ${activeSourceTab === 'custom-data' ? 'active' : ''}`}
-          >
-            Upload Data
-          </button>
-        </div>
-        <div className='active-sample-data'>                  
-          <h2 className="section-heading">Use Sample Data</h2>
-          <div className={chartStyles.chartCard}>
-            <div className={controlsStyles.header}>
-              <h2 className={controlsStyles.title}>Select Sample Demand Dataset</h2>
-              <span className={controlsStyles.badge}>Demand Dataset</span>
+        <Metrics metrics={metrics} />
+        <div className={`${activeSourceTab}`}>
+          {/* Tab Navigation */}
+          <div className="nav-tabs">
+            <button
+              onClick={() => setActiveSourceTab('sample-data')}
+              className={`tab-btn ${activeSourceTab === 'sample-data' ? 'active' : ''}`}
+            >
+              Sample Data
+            </button>
+            <button
+              onClick={() => setActiveSourceTab('custom-data')}
+              className={`tab-btn ${activeSourceTab === 'custom-data' ? 'active' : ''}`}
+            >
+              Upload Data
+            </button>
+          </div>
+          <div className='active-sample-data'>                  
+            <h2 className="section-heading">Use Sample Data</h2>
+            <div className={chartStyles.chartCard}>
+              <div className={controlsStyles.header}>
+                <h2 className={controlsStyles.title}>Select Sample Demand Dataset</h2>
+                <span className={controlsStyles.badge}>Demand Dataset</span>
+              </div>
+              <div className={controlsStyles.fieldGroup}>
+                <label className={controlsStyles.label}>
+                  <span>Data Source</span>
+                  <span className={controlsStyles.hint}>Input Dataset</span>
+                </label>
+                <select
+                  className={`${controlsStyles.input} ${controlsStyles.dropdown}`}
+                  value={controlsStyles.filepath}
+                  disabled={isRunning || isLoading}
+                  // disabled={true}
+                  onChange={(e) => {
+                    setSelectedSampleData(e.target.value as SampleDataKey);
+                    setIsCurrentData(false);
+                  }}
+                >
+                  <option value="RSXFSN">FRED Retail Data</option>
+                  <option value="RSAFSNA">FRED Retail and Food Data</option>
+                  <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
+                </select>
+              </div>
+              <div className={controlsStyles.actions}>
+                <button
+                  className={controlsStyles.primaryButton}
+                  disabled={isCurrentData}
+                  onClick={() => {
+                    setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
+                    setIsCurrentData(true);
+                  }}
+                >
+                  {isCurrentData ? "Updated" : "Update Data"}
+                </button>
+              </div>
             </div>
-            <div className={controlsStyles.fieldGroup}>
-              <label className={controlsStyles.label}>
-                <span>Data Source</span>
-                <span className={controlsStyles.hint}>Input Dataset</span>
-              </label>
-              <select
-                className={`${controlsStyles.input} ${controlsStyles.dropdown}`}
-                value={controlsStyles.filepath}
-                disabled={isRunning || isLoading}
-                // disabled={true}
-                onChange={(e) => {
-                  setSelectedSampleData(e.target.value as SampleDataKey);
-                  setIsCurrentData(false);
-                }}
-              >
-                <option value="RSXFSN">FRED Retail Data</option>
-                <option value="RSAFSNA">FRED Retail and Food Data</option>
-                <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
-              </select>
-            </div>
+          </div>
+          <div className='active-custom-data'>                  
+            <h2 className="section-heading">Upload Custom Data</h2>
+            <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
+          </div>
             <div className={controlsStyles.actions}>
               <button
                 className={controlsStyles.primaryButton}
-                disabled={isCurrentData}
-                onClick={() => {
-                  setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
-                  setIsCurrentData(true);
-                }}
+                onClick={handleRun}
+                disabled={isRunning || isLoading}
               >
-                {isCurrentData ? "Updated" : "Update Data"}
+                {isRunning ? 'Running Forecast...' : 'Run Forecast'}
               </button>
             </div>
-          </div>
         </div>
-        <div className='active-custom-data'>                  
-          <h2 className="section-heading">Upload Custom Data</h2>
-          <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
-        </div>
-          <div className={controlsStyles.actions}>
+        
+        <div className={`${activeChartTab}`}>
+          {/* Tab Navigation */}
+          <div className="nav-tabs">
             <button
-              className={controlsStyles.primaryButton}
-              onClick={handleRun}
-              disabled={isRunning || isLoading}
+              onClick={() => setActiveChartTab('forecast')}
+              className={`tab-btn ${activeChartTab === 'forecast' ? 'active' : ''}`}
             >
-              {isRunning ? 'Running Forecast...' : 'Run Forecast'}
+              Demand Forecast
+            </button>
+            <button
+              onClick={() => setActiveChartTab('ci-overlay')}
+              className={`tab-btn ${activeChartTab === 'ci-overlay' ? 'active' : ''}`}
+            >
+              Forecast Overlay
+            </button>
+            <button
+              onClick={() => setActiveChartTab('show-all')}
+              className={`tab-btn ${activeChartTab === 'show-all' ? 'active' : ''}`}
+            >
+              Show All
             </button>
           </div>
-      </div>
-      
-      <div className={`${activeChartTab}`}>
-        {/* Tab Navigation */}
-        <div className="nav-tabs">
-          <button
-            onClick={() => setActiveChartTab('forecast')}
-            className={`tab-btn ${activeChartTab === 'forecast' ? 'active' : ''}`}
-          >
-            Demand Forecast
-          </button>
-          <button
-            onClick={() => setActiveChartTab('ci-overlay')}
-            className={`tab-btn ${activeChartTab === 'ci-overlay' ? 'active' : ''}`}
-          >
-            Forecast Overlay
-          </button>
-          <button
-            onClick={() => setActiveChartTab('show-all')}
-            className={`tab-btn ${activeChartTab === 'show-all' ? 'active' : ''}`}
-          >
-            Show All
-          </button>
-        </div>
 
-        {/* Tab 1: Demand Forecast */}
-        <div className='active-forecast'>                  
-          <h2 className="section-heading">Demand Forecast</h2>
-          <div className={chartStyles.chartCard}>  
-            <Controls
-              inputs={chartInputs}
-              modelType={selectedModel}
-              onModelChange={handleModelChange}
-              onHistoryChange={handleHistoryChange}
-              onForecastChange={handleForecastChange}
-              isRunning={isRunning}
-              isLoading={isLoading}
-            />
-            {chartData && (
-              <ForecastChart
-                chartData={chartData}
-                dataHistorical={"historical"}
-                dataForecast={"forecast"}
-                name1={"Historical"}
-                name2={"Forecast"}
-                nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% Confidence Band`}
-                formatType={"currency"}
-                xLabel={'Date'}
-                yLabel={'Demand'}
+          {/* Tab 1: Demand Forecast */}
+          <div className='active-forecast'>                  
+            <h2 className="section-heading">Demand Forecast</h2>
+            <div className={chartStyles.chartCard}>  
+              <Controls
+                inputs={chartInputs}
+                modelType={selectedModel}
+                onModelChange={handleModelChange}
+                onHistoryChange={handleHistoryChange}
+                onForecastChange={handleForecastChange}
+                isRunning={isRunning}
+                isLoading={isLoading}
+              />
+              {chartData && (
+                <ForecastChart
+                  chartData={chartData}
+                  dataHistorical={"historical"}
+                  dataForecast={"forecast"}
+                  name1={"Historical"}
+                  name2={"Forecast"}
+                  nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% Confidence Band`}
+                  formatType={"currency"}
+                  xLabel={'Date'}
+                  yLabel={'Demand'}
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Tab 2: Forecast Overlay */}
+          <div className='active-ci-overlay'>
+            <h2 className="section-heading">Forecast Overlay</h2>
+            {overlayData && (
+              <ForecastOverlayChart
+                inputs={chartInputs}
+                modelType={selectedModel}
+                chartData={overlayData}
+                onModelChange={handleModelChange}
+                onHistoryChange={handleHistoryChange}
+                onForecastChange={handleForecastChange}
+                isRunning={isRunning}
               />
             )}
           </div>
         </div>
-
-        {/* Tab 2: Forecast Overlay */}
-        <div className='active-ci-overlay'>
-          <h2 className="section-heading">Forecast Overlay</h2>
-          {overlayData && (
-            <ForecastOverlayChart
-              inputs={chartInputs}
-              modelType={selectedModel}
-              chartData={overlayData}
-              onModelChange={handleModelChange}
-              onHistoryChange={handleHistoryChange}
-              onForecastChange={handleForecastChange}
-              isRunning={isRunning}
-            />
-          )}
-        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

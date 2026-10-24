@@ -1,12 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CsvLoadInputs, ForecastInputs, ForecastResults, ModelResults } from '../types';
+import type { CsvLoadInputs, ErrorMessage, ForecastInputs, ForecastResults, ModelResults, SuccessResult } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
   args?: any[];
 }
-
-type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<T | null>;
+type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<SuccessResult<T> | ErrorMessage | null>;
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
@@ -62,7 +61,7 @@ export function usePyodide() {
 
   // 2. Centralized Pyodide Invocation Wrapper
   const callPyFunction = useCallback(
-    (async <T,>({ fnName, args = [] }: PyFunctionProps): Promise<T | null> => {
+    (async <T,>({ fnName, args = [] }: PyFunctionProps): Promise<SuccessResult<T> | ErrorMessage | null> => {
       if (!pyodide) {
         console.warn(`Attempted to call ${fnName} before Pyodide finished loading.`);
         return null;
@@ -84,10 +83,23 @@ export function usePyodide() {
         // Convert Pyodide Proxy object to native JavaScript Types
         const jsResult = pyProxy.toJs({ dict_converter: Object.fromEntries }) as T;
 
-        return jsResult;
-      } catch (error) {
-        console.error(`Error executing Python function '${fnName}':`, error);
-        throw error;
+        return {success: true, result: jsResult};
+      } catch (err: unknown) {
+        const raw = err instanceof Error ? err.message : String(err);
+        const { pyType, message } = parsePythonError(raw);
+        const header = `Error executing Python function: '${fnName}'`;
+        console.error(header, raw);
+
+        // Show clean message for caught errors, generic for rest
+        const userFacing = pyType === 'ValueError' ? message : `${pyType}: ${message}`;
+
+        return {
+          success: false,
+          header,
+          type: pyType,
+          message: userFacing,
+          trace: raw
+        };
       } finally {
         // Clean up WASM proxies to prevent memory leaks
         if (pyProxy && typeof pyProxy.destroy === 'function') pyProxy.destroy();
@@ -100,13 +112,12 @@ export function usePyodide() {
           console.warn('Garbage collection trigger failed:', gcErr);
         }
       }
-    }) as CallPyFunction,
-    [pyodide]
+    }) as CallPyFunction, [pyodide]
   );
 
   // 3. Public API: Initial Model Fit
   const fitModels = useCallback(
-    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<ModelResults | null> => {
+    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<SuccessResult<ModelResults> | ErrorMessage | null> => {
       const historical = await callPyFunction<ModelResults>({
         fnName: 'fit_models',
         args: [source, isString, dateCol, targetCol, freq],
@@ -118,14 +129,28 @@ export function usePyodide() {
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecasts = useCallback(
-    async ({steps, alpha}: ForecastInputs): Promise<ForecastResults | null> => {
+    async ({steps, alpha}: ForecastInputs): Promise<SuccessResult<ForecastResults> | ErrorMessage | null> => {
       return await callPyFunction<ForecastResults>({
         fnName: 'generate_forecasts',
         args: [steps, alpha],
       });
-    },
-    [callPyFunction]
+    }, [callPyFunction]
   );
 
   return { isLoading, fitModels, updateForecasts };
+}
+
+function parsePythonError(fullTrace: string): { pyType: string; message: string } {
+  const lines = fullTrace.trim().split('\n');
+  const lastLine = lines[lines.length - 1] ?? '';
+
+  const idx = lastLine.indexOf(':');
+  if (idx === -1) {
+    return { pyType: lastLine || 'Error', message: 'An unexpected forecasting error occurred.' };
+  }
+
+  return {
+    pyType: lastLine.slice(0, idx).trim(),
+    message: lastLine.slice(idx + 1).trim() || 'An unexpected forecasting error occurred.',
+  };
 }

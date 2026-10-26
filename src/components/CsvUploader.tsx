@@ -22,6 +22,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
   const [selectedTargetCol, setSelectedTargetCol] = useState<string>("");
   const [selectedFreq, setSelectedFreq] = useState<string>("MS");
   const [isCurrentData, setIsCurrentData] = useState<boolean>(false);
+  const [selectedFileName, setSelectedFileName] = useState<string>("");
 
   useEffect(() => {
     setIsCurrentData(false);
@@ -42,6 +43,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
       if (!text) return;
 
       setCsvContent(text);
+      setSelectedFileName(file.name);
 
       // Extract the first line for headers
       const firstLine = text.split(/\r?\n/)[0];
@@ -75,80 +77,86 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
   };
 
   return (
-    <div className={'chart-card'}>
+    <>
       <div className={'controls-header'}>
         <h2 className={'controls-title'}>Upload Custom Demand Dataset</h2>
         <span className={'badge'}>Custom Dataset</span>
       </div>
-      <input type="file" accept=".csv" onChange={handleFileChange} />
+      <div className={'csv-inputs'}>
+        <div className={'custom-csv-upload'}>
+          <label htmlFor="csv-upload" className={'secondary-button'}>Custom Upload</label>
+          <input id="csv-upload" type="file" accept=".csv" onChange={handleFileChange} />
+          {selectedFileName}
+        </div>
 
-      {columns.length > 0 && (
-        <>
-          <div className={'controls-grid'}>
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Date Column:
-                <span className={'hint'}>Dates</span>
-              </label>
-              <select
-                className={`${'input'} ${'dropdown'}`}
-                value={selectedDateCol}
-                onChange={(e) => setSelectedDateCol(e.target.value)}
-              >
-                {columns.map((col) => (
-                  <option key={col} value={col}>
-                    {col}
-                  </option>
-                ))}
-              </select>
-            </div>
+        {columns.length > 0 && (
+          <>
+            <div className={'csv-inputs-grid'}>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Date Column:
+                  <span className={'hint'}>Dates</span>
+                </label>
+                <select
+                  className={`${'input'} ${'dropdown'}`}
+                  value={selectedDateCol}
+                  onChange={(e) => setSelectedDateCol(e.target.value)}
+                >
+                  {columns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Demand / Target Column:
-                <span className={'hint'}>Data Values</span>
-              </label>
-              <select
-                className={'input dropdown'}
-                value={selectedTargetCol}
-                onChange={(e) => setSelectedTargetCol(e.target.value)}
-              >
-                {columns.map((col) => (
-                  <option key={col} value={col}>
-                    {col}
-                  </option>
-                ))}
-              </select>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Demand / Target Column:
+                  <span className={'hint'}>Data Values</span>
+                </label>
+                <select
+                  className={'input dropdown'}
+                  value={selectedTargetCol}
+                  onChange={(e) => setSelectedTargetCol(e.target.value)}
+                >
+                  {columns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Frequency:
+                  <span className={'hint'}>Data Values</span>
+                </label>
+                <select
+                  className={'input dropdown'}
+                  value={selectedFreq}
+                  onChange={(e) => setSelectedFreq(e.target.value)}
+                >
+                  <option key={'Annual'} value={'A'}>Annual</option>
+                  <option key={'Quarterly'} value={'QS'}>Quarterly</option>
+                  <option key={'Monthly'} value={'MS'}>Monthly</option>
+                  <option key={'Weekly'} value={'W'}>Weekly</option>
+                  <option key={'Daily'} value={'D'}>Daily</option>
+                </select>
+              </div>
             </div>
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Frequency:
-                <span className={'hint'}>Data Values</span>
-              </label>
-              <select
-                className={'input dropdown'}
-                value={selectedFreq}
-                onChange={(e) => setSelectedFreq(e.target.value)}
+            <div className={'actions'}>
+              <button
+                className={'secondary-button'}
+                disabled={isCurrentData}
+                onClick={handleSubmit}
               >
-                <option key={'Annual'} value={'A'}>Annual</option>
-                <option key={'Quarterly'} value={'QS'}>Quarterly</option>
-                <option key={'Monthly'} value={'MS'}>Monthly</option>
-                <option key={'Weekly'} value={'W'}>Weekly</option>
-                <option key={'Daily'} value={'D'}>Daily</option>
-              </select>
+                {isCurrentData ? "Updated" : "Update Data"}
+              </button>
             </div>
-          </div>
-          <div className={'actions'}>
-            <button
-              className={'primary-button'}
-              disabled={isCurrentData}
-              onClick={handleSubmit}
-            >
-              {isCurrentData ? "Updated" : "Update Data"}
-            </button>
-          </div>
-        </>
-      )}
-    </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }

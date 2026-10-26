@@ -1,0 +1,46 @@
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+.segmented-option {
+    position: relative; cursor: pointer;
+}
+
+/* visually hidden but still focusable */
+.segmented-option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.segmented-option span {
+  display: block;
+  padding: 5px 14px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  border-radius: 999px;
+  transition: background-color 0.15s, color 0.15s, box-shadow 0.15s;
+}
+
+.segmented-option:hover input:not(:checked) + span {
+    color: var(--text-body);
+}
+
+.segmented-option input:checked + span {
+  background: var(--surface);
+  color: var(--brand-strong);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.12);
+}
+
+.segmented-option input:focus-visible + span {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+}

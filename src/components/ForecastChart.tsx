@@ -42,9 +42,9 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
   const seriesOrder: SeriesKeys[] = ['historical', 'forecast', 'ci_range'];
 
   const colorMap: Record<SeriesKeys, string> = {
-    historical: '#3b82f6',
-    forecast: 'rgb(16, 185, 129)',
-    ci_range: "rgba(16, 185, 129, 0.2)"
+    historical: 'var(--brand)',
+    forecast: 'var(--accent)',
+    ci_range: "rgba(var(--accent-rgb), 0.2)"
   }
 
   const nameMap: Record<SeriesKeys, string> = {
@@ -67,28 +67,30 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
       <div className={'chart-container'}>
         <ResponsiveContainer width="100%" height="100%">
           <ComposedChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 20 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis
               dataKey="date"
-              tick={{ fontSize: 12, fill: '#64748b' }}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+              stroke="var(--border)"
               label={{ 
                 value: xLabel,
                 position: 'insideBottom', 
                 offset: -12, 
-                fill: '#475569', 
+                fill: 'var(--text-body)',
                 fontSize: 12, 
                 fontWeight: 500 
               }}
             />
             <YAxis
               domain={['auto', 'auto']}
-              tick={{ fontSize: 12, fill: '#64748b' }}
+              tick={{ fontSize: 12, fill: 'var(--text-muted)' }}
+              stroke="var(--border)"
               label={{ 
                 value: yLabel, 
                 angle: -90, 
                 position: 'insideLeft', 
                 offset: 0, 
-                fill: '#475569', 
+                fill: 'var(--text-body)', 
                 fontSize: 12, 
                 fontWeight: 500 
               }}
@@ -112,7 +114,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Area
               type="monotone"
               dataKey="ci_range"
-              fill="#10b981"
+              fill={colorMap['forecast']}
               fillOpacity={0.1}
               stroke="none"
               name={nameCI}
@@ -122,7 +124,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Line
               type="monotone"
               dataKey={dataHistorical}
-              stroke="#3b82f6"
+              stroke={colorMap['historical']}
               strokeWidth={2}
               name={name1}
               dot={false}
@@ -130,7 +132,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Line
               type="monotone"
               dataKey={dataForecast}
-              stroke="#10b981"
+              stroke={colorMap['forecast']}
               strokeWidth={2}
               name={name2}
               dot={false}

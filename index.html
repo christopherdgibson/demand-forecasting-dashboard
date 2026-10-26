@@ -5,6 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Demand Forecasting Dashboard</title>
     <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('theme'); // 'light' | 'dark' | null (= system)
+          var dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -1,3 +1,5 @@
+export type ThemePref = 'system' | 'light' | 'dark';
+
 export type ModelType = 'ets' | 'sarimax' | 'theta';
 
 export interface CsvLoadInputs {

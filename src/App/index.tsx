@@ -1,21 +1,24 @@
 import { useEffect, useRef, useState } from 'react';
+import { usePyodide } from '../hooks/usePyodide';
+import { usePyodideWorker } from '../hooks/usePyodideWorker';
+import { useTheme } from '../hooks/useTheme';
+
+import { SegmentedControl } from '../components/SegmentedControl';
+import { ErrorBoundary } from '../components/ErrorBoundary';
+import { ErrorModal } from '../components/ErrorModal';
+import { InstructionsCard } from '../components/InstructionsCard';
 import { ControlPanel } from '../components/Controls';
 import { ForecastChart } from '../components/ForecastChart';
 import { ForecastOverlayChart } from '../components/ForecastOverlayChart';
 import { Metrics } from '../components/MetricsCard';
 import { CsvUploader } from '../components/CsvUploader';
-import { usePyodide } from '../hooks/usePyodide';
-import { usePyodideWorker } from '../hooks/usePyodideWorker';
-import { roundNumber } from '../utils/numberUtils';
 
-import { ErrorBoundary } from '../components/ErrorBoundary';
-import { ErrorModal } from '../components/ErrorModal';
-import { InstructionsCard } from '../components/InstructionsCard';
+import { roundNumber } from '../utils/numberUtils';
 import { adjustHistory, convertChartData, reshapeRows } from '../utils/dataUtils';
 
 import './styles.css'
 
-import type { CsvLoadInputs, ErrorMessage, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData, OverlayResults } from '../types';
+import type { CsvLoadInputs, ErrorMessage, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData } from '../types';
 
 type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA';
 
@@ -23,7 +26,7 @@ const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
   source: 'RSXFSN.csv',
   isString: false, 
   dateCol: 'observation_date', 
-  targetCol:'RSXFSN', 
+  targetCol: 'RSXFSN', 
   freq: 'MS'
 }
 
@@ -42,20 +45,28 @@ const modelNameMap: Record<ModelType, string> = {
   theta: 'Theta'
 }
 
-
 export default function App() {
+  // UI states
+  const hasFetchedRef = useRef(false);
   const [activeChartTab, setActiveChartTab] = useState<string | null>('forecast');
   const [activeSourceTab, setActiveSourceTab] = useState<string | null>('sample-data');
-  const hasFetchedRef = useRef(false);
   const [activeErrorModal, setActiveErrorModal] = useState<boolean>(false);
   const [modalError, setModalError] = useState<ErrorMessage | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>('RSXFSN');
+
+  // Hooks
+  const {activeTheme, setActiveTheme} = useTheme();
+  const {isLoading, fitModels, updateForecasts} = usePyodide();
+  // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
+
+  // Input states
+  const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>(DEFAULT_CSV_INPUTS['targetCol'] as SampleDataKey);
   const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
   const [selectedPastPeriods, setSelectedPastPeriods] = useState<number>(24);
   const [forecastInputs, setForecastInputs] = useState<ForecastProps>({csvInputs: DEFAULT_CSV_INPUTS, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
   const [chartInputs, setChartInputs] = useState<ForecastChartInputs>({...forecastInputs, history: selectedPastPeriods});
   const [isCurrentData, setIsCurrentData] = useState<boolean>(false);
+  const isSample = (forecastInputs.csvInputs.isString == false); // Keeps track of setting sample data as active
 
   // Derived data
   const [fullAdjustedHistory, setFullAdjustedHistory] = useState<Array<OverlayChartData> | null>(null);
@@ -64,12 +75,6 @@ export default function App() {
   const [chartData, setChartData] = useState<Array<ForecastChartData> | null>(null);
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);  
-
-  const { isLoading, fitModels, updateForecasts } = usePyodide();
-  // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
-
-  // Keeps track of setting sample data as active
-  const isSample = (forecastInputs.csvInputs.isString == false);
 
   // Load and fit model on initial mount
   useEffect(() => {
@@ -193,7 +198,19 @@ export default function App() {
   return (
     <ErrorBoundary>
       <div className={'app-container'}>
-        <h1 className={'title'}>Demand Forecast Dashboard</h1>
+        <div className={'app-header'}>
+          <h1 className={'title'}>Demand Forecast Dashboard</h1>
+          <SegmentedControl
+            label="Theme"
+            value={activeTheme}
+            onChange={setActiveTheme}
+            options={[
+              { value: 'system', label: 'System' },
+              { value: 'light',  label: 'Light' },
+              { value: 'dark',   label: 'Dark' },
+            ]}
+          />
+        </div>
 
         {isLoading && ( 
           <div className={'loading-container'}>
@@ -203,13 +220,13 @@ export default function App() {
         )}
 
         <InstructionsCard/>
+
         {activeErrorModal && !isLoading && !isRunning && modalError &&
           <ErrorModal activeModal={activeErrorModal} setActiveModal={setActiveErrorModal} error={modalError}/>
         }
 
-        <Metrics metrics={metrics} />
+        {/* Source Dataset */}
         <div className={`${activeSourceTab}`}>
-          {/* Tab Navigation */}
           <div className="nav-tabs">
             <button
               onClick={() => setActiveSourceTab('sample-data')}
@@ -224,36 +241,36 @@ export default function App() {
               Upload Data
             </button>
           </div>
-          <div className='active-sample-data'>                  
-            <h2 className="section-heading">Use Sample Data</h2>
-            <div className={'chart-card'}>
+          <h2 className="section-heading">{activeSourceTab === 'sample-data' ? 'Use Sample Data' : 'Upload Custom Data'}</h2>
+          <div className={'chart-card'}>
+            <div className='active-sample-data'>                  
+            
               <div className={'controls-header'}>
                 <h2 className={'controls-title'}>Select Sample Demand Dataset</h2>
                 <span className={'badge'}>Demand Dataset</span>
               </div>
-              <div className={'field-group'}>
-                <label className={'label'}>
-                  <span>Data Source</span>
-                  <span className={'hint'}>Input Dataset</span>
-                </label>
-                <select
-                  className={'input dropdown'}
-                  value={selectedSampleData}
-                  disabled={isRunning || isLoading}
-                  // disabled={true}
-                  onChange={(e) => {
-                    setSelectedSampleData(e.target.value as SampleDataKey);
-                    setIsCurrentData(false);
-                  }}
-                >
-                  <option value="RSXFSN">FRED Retail Data</option>
-                  <option value="RSAFSNA">FRED Retail and Food Data</option>
-                  <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
-                </select>
-              </div>
-              <div className={'actions'}>
+              <div className={'input-group'}>
+                <div className={'field-group input-left'}>
+                  <label className={'label'}>
+                    <span>Data Source</span>
+                    <span className={'hint'}>Input Dataset</span>
+                  </label>
+                  <select
+                    className={'input dropdown'}
+                    value={selectedSampleData}
+                    disabled={isRunning || isLoading}
+                    onChange={(e) => {
+                      setSelectedSampleData(e.target.value as SampleDataKey);
+                      setIsCurrentData(false);
+                    }}
+                  >
+                    <option value="RSXFSN">FRED Retail Data</option>
+                    <option value="RSAFSNA">FRED Retail and Food Data</option>
+                    <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
+                  </select>
+                </div>
                 <button
-                  className={'primary-button'}
+                  className={'secondary-button'}
                   disabled={isCurrentData}
                   onClick={() => {
                     setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
@@ -264,11 +281,9 @@ export default function App() {
                 </button>
               </div>
             </div>
-          </div>
-          <div className='active-custom-data'>                  
-            <h2 className="section-heading">Upload Custom Data</h2>
-            <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
-          </div>
+            <div className='active-custom-data'>                  
+              <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
+            </div>
             <div className={'actions'}>
               <button
                 className={'primary-button'}
@@ -278,10 +293,13 @@ export default function App() {
                 {isRunning ? 'Running Forecast...' : 'Run Forecast'}
               </button>
             </div>
+          </div>
         </div>
         
+        <Metrics metrics={metrics} />
+        
+        {/* Active Chart Tab Navigation */}
         <div className={`${activeChartTab}`}>
-          {/* Tab Navigation */}
           <div className="nav-tabs">
             <button
               onClick={() => setActiveChartTab('forecast')}

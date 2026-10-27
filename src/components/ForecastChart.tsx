@@ -15,7 +15,7 @@ import { CustomLegend } from './CustomLegend';
 import { CustomTooltip } from './CustomTooltip';
 
 import '../App/styles.css';
-import type { DemandProps, ForecastChartData } from '../types';
+import type { ColorEntry, DemandProps, ForecastChartData } from '../types';
 
 interface ForecastChartProps {
   controlPanel?: any;
@@ -41,10 +41,10 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
 
   const seriesOrder: SeriesKeys[] = ['historical', 'forecast', 'ci_range'];
 
-  const colorMap: Record<SeriesKeys, string> = {
-    historical: 'var(--brand)',
-    forecast: 'var(--accent)',
-    ci_range: "rgba(var(--accent-rgb), 0.2)"
+  const colorMap: Record<SeriesKeys, ColorEntry> = {
+    historical: {color: 'var(--brand)', opacity: 1},
+    forecast: {color: 'var(--accent)', opacity: 1},
+    ci_range: {color: 'var(--accent)', opacity: 0.4}
   }
 
   const nameMap: Record<SeriesKeys, string> = {
@@ -114,7 +114,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Area
               type="monotone"
               dataKey="ci_range"
-              fill={colorMap['forecast']}
+              fill={colorMap['ci_range'].color}
               fillOpacity={0.1}
               stroke="none"
               name={nameCI}
@@ -124,7 +124,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Line
               type="monotone"
               dataKey={dataHistorical}
-              stroke={colorMap['historical']}
+              stroke={colorMap['historical'].color}
               strokeWidth={2}
               name={name1}
               dot={false}
@@ -132,7 +132,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
             <Line
               type="monotone"
               dataKey={dataForecast}
-              stroke={colorMap['forecast']}
+              stroke={colorMap['forecast'].color}
               strokeWidth={2}
               name={name2}
               dot={false}

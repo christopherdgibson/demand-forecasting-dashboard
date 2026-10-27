@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { useTheme } from '../hooks/useTheme';
+import { useHue } from '../hooks/useHue';
 
+import { HuePicker } from '../components/HuePicker';
 import { SegmentedControl } from '../components/SegmentedControl';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { ErrorModal } from '../components/ErrorModal';
@@ -56,6 +58,7 @@ export default function App() {
 
   // Hooks
   const {activeTheme, setActiveTheme} = useTheme();
+  const {activeHue, setActiveHue} = useHue();
   const {isLoading, fitModels, updateForecasts} = usePyodide();
   // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
 
@@ -200,16 +203,19 @@ export default function App() {
       <div className={'app-container'}>
         <div className={'app-header'}>
           <h1 className={'title'}>Demand Forecast Dashboard</h1>
-          <SegmentedControl
-            label="Theme"
-            value={activeTheme}
-            onChange={setActiveTheme}
-            options={[
-              { value: 'system', label: 'System' },
-              { value: 'light',  label: 'Light' },
-              { value: 'dark',   label: 'Dark' },
-            ]}
-          />
+          <div className="app-header-controls">
+            <HuePicker value={activeHue} onChange={setActiveHue} />
+            <SegmentedControl
+              label="Theme"
+              value={activeTheme}
+              onChange={setActiveTheme}
+              options={[
+                { value: 'system', label: 'System' },
+                { value: 'light',  label: 'Light' },
+                { value: 'dark',   label: 'Dark' },
+              ]}
+            />
+          </div>
         </div>
 
         {isLoading && ( 

@@ -17,7 +17,7 @@ import { CustomTooltip } from './CustomTooltip';
 
 import '../App/styles.css';
 
-import type { ForecastChartInputs, ModelType, OverlayChartData } from '../types';
+import type { ColorEntry, ForecastChartInputs, ModelType, OverlayChartData } from '../types';
 
 interface OverlayChartProps {
     inputs: ForecastChartInputs;
@@ -45,14 +45,14 @@ const activeCI: Record<ModelType, SeriesKeys> = {
     theta: "theta_ci"
 }
 
-const colorMap: Record<SeriesKeys, string> = {
-    historical: 'var(--brand)',
-    forecast_ets: 'var(--accent)',
-    forecast_sarimax: '#8b5cf6',
-    forecast_theta: '#f59e0b',
-    ets_ci: "rgba(var(--accent-rgb), 0.2)",
-    sarimax_ci: "rgba(139, 92, 246, 0.3)",
-    theta_ci: "rgba(245, 158, 11, 0.3)"
+const colorMap: Record<SeriesKeys, ColorEntry> = {
+    historical: {color: 'var(--brand)', opacity: 1},
+    forecast_ets: {color: 'var(--accent)', opacity: 1},
+    forecast_sarimax: {color: '#8b5cf6', opacity: 1},
+    forecast_theta: {color: '#f59e0b', opacity: 1},
+    ets_ci: {color: "var(--accent)", opacity: 0.4},
+    sarimax_ci: {color:  '#8b5cf6', opacity: 0.4},
+    theta_ci: {color: '#f59e0b', opacity: 0.4}
 }
 
 const nameMap: Record<SeriesKeys, string> = {
@@ -127,7 +127,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                         <Line
                             type="monotone"
                             dataKey="historical"
-                            stroke={colorMap['historical']}
+                            stroke={colorMap['historical'].color}
                             strokeWidth={2}
                             name="Historical Sales"
                             dot={false}
@@ -139,7 +139,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                             <Area
                                 type="monotone"
                                 dataKey="ets_ci"
-                                fill={colorMap['forecast_ets']}
+                                fill={colorMap['forecast_ets'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
                                 name={`ETS ${CILabel}`}
@@ -149,7 +149,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                             <Area
                                 type="monotone"
                                 dataKey="sarimax_ci"
-                                fill={colorMap['forecast_sarimax']}
+                                fill={colorMap['forecast_sarimax'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
                                 name={`Sarimax ${CILabel}`}
@@ -159,7 +159,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                             <Area
                                 type="monotone"
                                 dataKey="theta_ci"
-                                fill={colorMap['forecast_theta']}
+                                fill={colorMap['forecast_theta'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
                                 name={`Theta ${CILabel}`}
@@ -168,7 +168,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                         <Line
                             type="monotone"
                             dataKey="forecast_ets"
-                            stroke={colorMap['forecast_ets']}
+                            stroke={colorMap['forecast_ets'].color}
                             strokeWidth={modelType === 'ets' ? 2 : 1}
                             strokeDasharray={modelType === 'ets' ? 0 : 4}
                             name="ETS Forecast"
@@ -180,7 +180,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                         <Line
                             type="monotone"
                             dataKey="forecast_sarimax"
-                            stroke={colorMap['forecast_sarimax']}
+                            stroke={colorMap['forecast_sarimax'].color}
                             strokeWidth={modelType === 'sarimax' ? 2 : 1}
                             strokeDasharray={modelType === 'sarimax' ? 0 : 4}
                             name="SARIMAX Forecast"
@@ -192,7 +192,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                         <Line
                             type="monotone"
                             dataKey="forecast_theta"
-                            stroke={colorMap['forecast_theta']}
+                            stroke={colorMap['forecast_theta'].color}
                             strokeWidth={modelType === 'theta' ? 2 : 1}
                             strokeDasharray={modelType === 'theta' ? 0 : 4}
                             name="Theta Forecast"

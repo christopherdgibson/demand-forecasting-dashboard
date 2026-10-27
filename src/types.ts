@@ -109,6 +109,11 @@ export interface OverlayChartData extends OverlayResults {
     theta_ci: (number | null)[] | null;
 }
 
+export interface ColorEntry {
+  color: string;
+  opacity: number;
+}
+
 declare global {
   interface Window {
     loadPyodide: (config?: { indexURL?: string }) => Promise<any>;

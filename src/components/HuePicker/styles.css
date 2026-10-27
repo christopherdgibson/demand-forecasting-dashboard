@@ -1,0 +1,48 @@
+.hue-picker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hue-option {
+  position: relative;
+  display: block;
+  cursor: pointer;
+}
+
+.hue-option input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  margin: 0;
+  cursor: pointer;
+}
+
+.hue-option span {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, oklch(var(--swatch-l) 0.17 var(--h)) 50%, oklch(var(--swatch-l) 0.12 var(--a)) 50%);
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 3px transparent;  /* gap + invisible ring */
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.hue-option:hover span {
+  transform: scale(1.12);
+}
+
+.hue-option input:checked + span {
+  box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--brand);
+}
+
+.hue-option input:focus-visible + span {
+  outline: 2px solid var(--text);
+  outline-offset: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hue-option span {
+    transition: none;
+  }
+}

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { HueKeys, HUE_PRESETS, type HueSettings } from '../../hooks/useHue';
+import { hexToOklch, oklchToHex } from '../../utils/colorUtils';
 
 import './styles.css';
 
@@ -7,28 +8,6 @@ interface HuePickerProps {
   value: HueSettings;
   activePreset: keyof typeof HUE_PRESETS | null;
   onChange: (v: HueSettings) => void;
-}
-
-function HueSlider({ label, value, onChange }: {
-  label: string; value: number; onChange: (n: number) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="hue-slider-row">
-      <label htmlFor={id}>{label}</label>
-      <input
-        id={id}
-        className="hue-slider"
-        type="range"
-        min={0}
-        max={359}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        style={{ ['--h' as string]: value }}
-      />
-      <output>{value}°</output>
-    </div>
-  );
 }
 
 export function HuePicker({ value, activePreset, onChange }: HuePickerProps) {
@@ -108,5 +87,60 @@ export function HuePicker({ value, activePreset, onChange }: HuePickerProps) {
         </div>
       )}
     </div>
+  );
+}
+
+
+function HueSlider({ label, value, onChange }: {
+  label: string; value: number; onChange: (n: number) => void;
+}) {
+  const id = useId();
+  return (
+    <div className="hue-slider-row">
+      <label htmlFor={id}>{label}</label>
+      <input
+        id={id}
+        className="hue-slider"
+        type="range"
+        min={0}
+        max={359}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+        style={{ ['--h' as string]: value }}
+      />
+      <HexField hue={value} chroma={0.17} onCommit={onChange} />
+      {/* <output>{value}°</output> */}
+    </div>
+  );
+}
+
+function HexField({ hue, chroma, onCommit }: {
+  hue: number; chroma: number; onCommit: (hue: number) => void;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+
+  const L = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--swatch-l')
+  ) || 0.5;
+  const shown = draft ?? oklchToHex(L, chroma, hue);
+
+  const commit = () => {
+    if (draft === null) return;
+    const parsed = hexToOklch(draft);
+    if (parsed) onCommit(Math.round(parsed.h));
+    setDraft(null);
+  };
+
+  return (
+    <input
+      className="hue-hex"
+      value={shown}
+      maxLength={7}
+      spellCheck={false}
+      aria-label="Hex colour"
+      onChange={(e) => setDraft(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => e.key === 'Enter' && commit()}
+    />
   );
 }

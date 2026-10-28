@@ -58,7 +58,7 @@ export default function App() {
 
   // Hooks
   const {activeTheme, setActiveTheme} = useTheme();
-  const {activeHue, setActiveHue} = useHue();
+  const { hues, setHues, activePreset } = useHue();
   const {isLoading, fitModels, updateForecasts} = usePyodide();
   // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
 
@@ -204,7 +204,7 @@ export default function App() {
         <div className={'app-header'}>
           <h1 className={'title'}>Demand Forecast Dashboard</h1>
           <div className="app-header-controls">
-            <HuePicker value={activeHue} onChange={setActiveHue} />
+            <HuePicker value={hues} activePreset={activePreset} onChange={setHues} />
             <SegmentedControl
               label="Theme"
               value={activeTheme}

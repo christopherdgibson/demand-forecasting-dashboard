@@ -19,6 +19,7 @@
   --brand-strong: oklch(0.38 0.15 var(--hue));
   --brand-soft:   oklch(0.95 0.03 var(--hue));
   --accent: oklch(0.60 0.12 var(--hue-accent));
+  --accent-soft: oklch(0.95 0.02 var(--hue-accent));
   --focus-ring:   oklch(0.50 0.19 var(--hue) / 0.25);
 
   /* --brand: #1d4ed8;
@@ -55,6 +56,7 @@
   --brand-strong: oklch(0.84 0.10 var(--hue));
   --brand-soft:   oklch(0.74 0.14 var(--hue) / 0.15);
   --accent:       oklch(0.78 0.12 var(--hue-accent));
+  --accent-soft:  oklch(0.78 0.12 var(--hue-accent) / 0.25);
   --focus-ring:   oklch(0.74 0.14 var(--hue) / 0.30);
 
   --btn-bg: linear-gradient(135deg, var(--brand), var(--accent));
@@ -388,7 +390,7 @@ input[type="range"] { accent-color: var(--brand); }
 }
 
 .primary-button {
-  background: var(--btn-bg);
+  background: var(--brand);
   color: #fff;
   border: 1px solid transparent;
 }

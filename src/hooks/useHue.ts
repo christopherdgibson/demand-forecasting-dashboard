@@ -1,46 +1,57 @@
 import { useEffect, useState } from 'react';
 
-interface HueEntry {
-  label: string;
-  hue: number;
-  accent: number;
+interface HueEntry { label: string; hue: number; accent: number }
+
+export const HUE_PRESETS = {
+  sapphire: { label: 'Sapphire', hue: 265, accent: 185 },
+  teal:     { label: 'Teal',     hue: 195, accent: 290 },
+  emerald:  { label: 'Emerald',  hue: 155, accent: 255 },
+  violet:   { label: 'Violet',   hue: 295, accent: 190 },
+  amber:    { label: 'Amber',    hue: 55,  accent: 265 },
+} as const satisfies Record<string, HueEntry>;
+
+export type HueId = keyof typeof HUE_PRESETS;
+export const HueKeys = Object.keys(HUE_PRESETS) as HueId[];
+
+export interface HueSettings { hue: number; accent: number }
+
+const DEFAULT: HueSettings = { hue: 265, accent: 185 };
+const wrap = (n: number) => ((Math.round(n) % 360) + 360) % 360;
+
+function readSaved(): HueSettings {
+  try {
+    const raw = localStorage.getItem('hue');
+    if (raw) {
+      // old format: a preset name
+      if (raw in HUE_PRESETS) {
+        const p = HUE_PRESETS[raw as HueId];
+        return { hue: p.hue, accent: p.accent };
+      }
+      const parsed = JSON.parse(raw);
+      if (Number.isFinite(parsed?.hue) && Number.isFinite(parsed?.accent)) {
+        return { hue: wrap(parsed.hue), accent: wrap(parsed.accent) };
+      }
+    }
+  } catch {}
+  return DEFAULT;
 }
 
-export const HUE_PRESETS  = {
-  sapphire: {label: 'Sapphire', hue: 265, accent: 185 },
-  teal: {label: 'Teal', hue: 195, accent: 290 },
-  emerald: {label: 'Emerald', hue: 155, accent: 255 },
-  violet: {label: 'Violet', hue: 295, accent: 190 },
-  amber: {label: 'Amber', hue: 55, accent: 265 },
- } as const satisfies Record<string, HueEntry>;
-
-export type HueKey = keyof typeof HUE_PRESETS;
-export const HueNames = Object.keys(HUE_PRESETS) as HueKey[];
-
-function applyHue(id: HueKey) {
-  const p = HUE_PRESETS[id];
+function applyHue({ hue, accent }: HueSettings) {
   const root = document.documentElement;
-  root.style.setProperty('--hue', String(p.hue));
-  root.style.setProperty('--hue-accent', String(p.accent));
+  root.style.setProperty('--hue', String(hue));
+  root.style.setProperty('--hue-accent', String(accent));
 }
 
 export function useHue() {
-  const isHueKey = (v: unknown): v is HueKey => typeof v === 'string' && v in HUE_PRESETS;
-  const [activeHue, setActiveHue] = useState<HueKey>(() => {
-    try {
-      const saved = localStorage.getItem('hue');
-      return isHueKey(saved) ? saved : 'sapphire';
-    } catch {
-      return 'sapphire';
-    }
-  });
+  const [hues, setHues] = useState<HueSettings>(readSaved);
 
   useEffect(() => {
-    applyHue(activeHue);
-    try {
-      localStorage.setItem('hue', activeHue);
-    } catch {}
-  }, [activeHue]);
+    applyHue(hues);
+    try { localStorage.setItem('hue', JSON.stringify(hues)); } catch {}
+  }, [hues]);
 
-  return { activeHue, setActiveHue };
+  const activePreset =
+    HueKeys.find((k) => HUE_PRESETS[k].hue === hues.hue && HUE_PRESETS[k].accent === hues.accent) ?? null;
+
+  return { hues, setHues, activePreset };
 }

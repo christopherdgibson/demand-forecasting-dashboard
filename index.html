@@ -7,10 +7,21 @@
     <link rel="icon" type="image/x-icon" href="./favicon.ico"/>
     <script>
       (function () {
+        var root = document.documentElement;
+
+        var dark = matchMedia('(prefers-color-scheme: dark)').matches;
         try {
-          var t = localStorage.getItem('theme'); // 'light' | 'dark' | null (= system)
-          var dark = t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
-          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+          var t = localStorage.getItem('theme');
+          if (t) dark = t === 'dark';
+        } catch (e) {}
+        root.dataset.theme = dark ? 'dark' : 'light';
+
+        try {
+          var h = JSON.parse(localStorage.getItem('hue'));
+          if (h && isFinite(h.hue) && isFinite(h.accent)) {
+            root.style.setProperty('--hue', h.hue);
+            root.style.setProperty('--hue-accent', h.accent);
+          }
         } catch (e) {}
       })();
     </script>

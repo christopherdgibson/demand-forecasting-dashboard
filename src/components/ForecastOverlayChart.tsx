@@ -16,7 +16,7 @@ import { CustomTooltip } from './CustomTooltip';
 
 import '../App/styles.css';
 
-import type { ColorEntry, ModelType, OverlayChartData } from '../types';
+import type { ColorStyle, ModelType, OverlayChartData } from '../types';
 
 interface OverlayChartProps {
     controlPanel?: JSX.Element;
@@ -41,16 +41,6 @@ const activeCI: Record<ModelType, SeriesKeys> = {
     theta: "theta_ci"
 }
 
-const colorMap: Record<SeriesKeys, ColorEntry> = {
-    historical: {color: 'var(--brand)', opacity: 1},
-    forecast_ets: {color: 'var(--accent)', opacity: 1},
-    forecast_sarimax: {color: '#8b5cf6', opacity: 1},
-    forecast_theta: {color: '#f59e0b', opacity: 1},
-    ets_ci: {color: "var(--accent)", opacity: 0.4},
-    sarimax_ci: {color:  '#8b5cf6', opacity: 0.4},
-    theta_ci: {color: '#f59e0b', opacity: 0.4}
-}
-
 export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameCI }: OverlayChartProps) {
     if (!chartData || chartData.length === 0) return null;
     const seriesOrderActive = [...seriesOrder, activeCI[modelType]];
@@ -64,9 +54,19 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
         theta_ci: `Theta ${nameCI}`
     }
 
+    const colorMap: Record<SeriesKeys, ColorStyle> = {
+        historical: {shape: 'line', color: 'var(--brand)', opacity: 1},
+        forecast_ets: {shape: 'line', color: 'var(--series-ets)', opacity: 1, dash: modelType === 'ets' ? '0' : '6 4'},
+        forecast_sarimax: {shape: 'line', color: 'var(--series-sarimax)', opacity: 1, dash: modelType === 'sarimax' ? '0' : '2 4'},
+        forecast_theta: {shape: 'line', color: 'var(--series-theta)', opacity: 1, dash: modelType === 'theta' ? '0' : '10 3 2 3'},
+        ets_ci: {shape: 'area', color: "var(--series-ets)", opacity: 0.4},
+        sarimax_ci: {shape: 'area', color:  'var(--series-sarimax)', opacity: 0.4},
+        theta_ci: {shape: 'area', color: 'var(--series-theta)', opacity: 0.4}
+    }
+
     return (
         <div className={'chart-card'}>
-            {controlPanel}          
+            {controlPanel}
             <h3 className={'chart-title'}>Demand Forecast Overlay</h3>
             <div className={'chart-container'}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -74,25 +74,25 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="date" tick={{ fontSize: 12, fill: 'var(--text-muted)' }} stroke="var(--border)"
                             label={{ 
-                            value: "Date",
-                            position: 'insideBottom', 
-                            offset: -12, 
-                            fill: 'var(--text-body)',
-                            fontSize: 12, 
-                            fontWeight: 500 
-                        }}
+                                value: "Date",
+                                position: 'insideBottom', 
+                                offset: -12, 
+                                fill: 'var(--text-body)',
+                                fontSize: 12, 
+                                fontWeight: 500 
+                            }}
                         />
                         <YAxis domain={['auto', 'auto']} tick={{ fontSize: 12, fill: 'var(--text-muted)' }} stroke="var(--border)"
                             label={{ 
-                            value: "Demand", 
-                            angle: -90, 
-                            position: 'insideLeft', 
-                            offset: 0, 
-                            fill: 'var(--text-body)', 
-                            fontSize: 12, 
-                            fontWeight: 500 
-                        }}/>
-                        
+                                value: "Demand", 
+                                angle: -90, 
+                                position: 'insideLeft', 
+                                offset: 0, 
+                                fill: 'var(--text-body)', 
+                                fontSize: 12, 
+                                fontWeight: 500 
+                            }}
+                        />
                         <Tooltip
                             wrapperStyle={{backgroundColor:'white', fontSize: '12px'}}
                             content={(props) => CustomTooltip({props, seriesOrder: seriesOrderActive, formatType: 'currency'})}
@@ -104,7 +104,6 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                                     seriesOrder={seriesOrderActive}
                                     nameMap={nameMap}
                                     colorMap={colorMap}
-                                    activeForecast={activeForecast[modelType]}
                                 />
                             }
                         />
@@ -156,7 +155,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             dataKey="forecast_ets"
                             stroke={colorMap['forecast_ets'].color}
                             strokeWidth={modelType === 'ets' ? 2 : 1}
-                            strokeDasharray={modelType === 'ets' ? 0 : 4}
+                            strokeDasharray={colorMap['forecast_ets'].dash}
                             name="ETS Forecast"
                             dot={false}
                             connectNulls={false}
@@ -168,7 +167,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             dataKey="forecast_sarimax"
                             stroke={colorMap['forecast_sarimax'].color}
                             strokeWidth={modelType === 'sarimax' ? 2 : 1}
-                            strokeDasharray={modelType === 'sarimax' ? 0 : 4}
+                            strokeDasharray={colorMap['forecast_sarimax'].dash}
                             name="SARIMAX Forecast"
                             dot={false}
                             connectNulls={false}
@@ -180,7 +179,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             dataKey="forecast_theta"
                             stroke={colorMap['forecast_theta'].color}
                             strokeWidth={modelType === 'theta' ? 2 : 1}
-                            strokeDasharray={modelType === 'theta' ? 0 : 4}
+                            strokeDasharray={colorMap['forecast_theta'].dash}
                             name="Theta Forecast"
                             dot={false}
                             connectNulls={false}

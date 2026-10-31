@@ -58,6 +58,13 @@ export interface ForecastProps extends ForecastChartInputs {
   csvInputs: CsvLoadInputs;
 }
 
+export interface ColorStyle {
+  shape: 'line' | 'area';
+  dash?: string;
+  color: string;
+  opacity: number;
+}
+
 export interface ModelMetrics {
   aic: number | null;
   bic: number | null;
@@ -109,11 +116,6 @@ export interface OverlayChartData extends OverlayResults {
     ets_ci: (number | null)[] | null;
     sarimax_ci: (number | null)[] | null;
     theta_ci: (number | null)[] | null;
-}
-
-export interface ColorEntry {
-  color: string;
-  opacity: number;
 }
 
 declare global {

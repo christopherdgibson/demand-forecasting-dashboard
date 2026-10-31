@@ -16,7 +16,7 @@ import { CustomLegend } from './CustomLegend';
 import { CustomTooltip } from './CustomTooltip';
 
 import '../App/styles.css';
-import type { ColorEntry, DemandProps, ForecastChartData } from '../types';
+import type { ColorStyle, DemandProps, ForecastChartData } from '../types';
 
 interface ForecastChartProps {
   controlPanel?: JSX.Element;
@@ -42,10 +42,10 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
 
   const seriesOrder: SeriesKeys[] = ['historical', 'forecast', 'ci_range'];
 
-  const colorMap: Record<SeriesKeys, ColorEntry> = {
-    historical: {color: 'var(--brand)', opacity: 1},
-    forecast: {color: 'var(--accent)', opacity: 1},
-    ci_range: {color: 'var(--accent)', opacity: 0.4}
+  const colorMap: Record<SeriesKeys, ColorStyle> = {
+    historical: {shape: 'line', color: 'var(--brand)', opacity: 1},
+    forecast: {shape: 'line', color: 'var(--accent)', opacity: 1},
+    ci_range: {shape: 'area', color: 'var(--accent)', opacity: 0.4}
   }
 
   const nameMap: Record<SeriesKeys, string> = {

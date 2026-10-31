@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import {
   ResponsiveContainer,
   Area,
@@ -18,14 +19,14 @@ import '../App/styles.css';
 import type { ColorEntry, DemandProps, ForecastChartData } from '../types';
 
 interface ForecastChartProps {
-  controlPanel?: any;
+  controlPanel?: JSX.Element;
   chartData: Array<ForecastChartData>;
   title?: string;
   dataHistorical: keyof DemandProps;
   dataForecast: keyof DemandProps;
   name1: string;
   name2: string;
-  nameCI?: string;
+  nameCI: string;
   formatType?: string;
   xLabel: RenderableText;
   yLabel: RenderableText;
@@ -50,7 +51,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
   const nameMap: Record<SeriesKeys, string> = {
     historical: 'Historical',
     forecast: 'Forecast',
-    ci_range: "95% Confidence Interval"
+    ci_range: nameCI
   }
 
   const legendPayload = seriesOrder.map((key: SeriesKeys) => ({
@@ -61,7 +62,7 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
   }));
 
   return (
-    <>
+    <div className={'chart-card'}>
       {controlPanel}
       <h3 className={'chart-title'}>{title}</h3>
       <div className={'chart-container'}>
@@ -140,6 +141,6 @@ export function ForecastChart({ title = "Demand Trajectory & 12-Month Forecast",
           </ComposedChart>
         </ResponsiveContainer>
       </div>
-    </>
+    </div>
   );
 }

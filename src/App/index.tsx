@@ -20,7 +20,20 @@ import { adjustHistory, convertChartData, reshapeRows } from '../utils/dataUtils
 
 import './styles.css'
 
-import type { CsvLoadInputs, ErrorMessage, ForecastChartData, ForecastChartInputs, ForecastInputs, ForecastProps, ForecastResults, ModelMetrics, ModelType, OverlayChartData } from '../types';
+import type {
+  CardInputs,
+  CsvLoadInputs,
+  ErrorMessage,
+  ForecastChartData,
+  ForecastChartInputs,
+  ForecastHorizonKeys,
+  ForecastInputs,
+  ForecastProps,
+  ForecastResults,
+  ModelMetrics,
+  ModelType,
+  OverlayChartData 
+} from '../types';
 
 type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA';
 
@@ -78,6 +91,22 @@ export default function App() {
   const [chartData, setChartData] = useState<Array<ForecastChartData> | null>(null);
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
   const [metrics, setMetrics] = useState<ModelMetrics | null>(null);  
+
+  const timeHorizonCards: Record<ForecastHorizonKeys, CardInputs> = {
+    history: {
+      title: "Historic Horizon",
+      hint: "Previous Periods",
+      min: 1,
+      max: fullAdjustedHistory?.length,
+      step: 1,
+    },
+    steps: {
+      title: "Prediction Horizon",
+      hint: "Forecast Periods",
+      min: 1,
+      step: 1,
+    }
+  };
 
   // Load and fit model on initial mount
   useEffect(() => {
@@ -189,8 +218,9 @@ export default function App() {
     }
   };
 
-  const handleDataReady = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
-    setForecastInputs({...forecastInputs, csvInputs: {source, isString, dateCol, targetCol, freq}})
+  const handleCustomDataReady = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
+    setForecastInputs({...forecastInputs, csvInputs: {source, isString, dateCol, targetCol, freq}});
+    // setIsCurrentData(false); // might change sample state here instead of with useEffect[sample] above?
   };
 
   function handleErrorResponse(error: ErrorMessage) {
@@ -288,7 +318,7 @@ export default function App() {
               </div>
             </div>
             <div className='active-custom-data'>                  
-              <CsvUploader isSample={isSample} onDataReady={handleDataReady}/>
+              <CsvUploader isSample={isSample} onDataReady={handleCustomDataReady}/>
             </div>
             <div className={'actions'}>
               <button
@@ -330,45 +360,54 @@ export default function App() {
           {/* Tab 1: Demand Forecast */}
           <div className='active-forecast'>                  
             <h2 className="section-heading">Demand Forecast</h2>
-            <div className={'chart-card'}>  
-              <ControlPanel
-                inputs={chartInputs}
-                modelType={selectedModel}
-                onModelChange={handleModelChange}
-                onHistoryChange={handleHistoryChange}
-                onForecastChange={handleForecastChange}
-                isRunning={isRunning}
-                isLoading={isLoading}
+            {chartData && (
+              <ForecastChart
+                controlPanel={
+                  <ControlPanel
+                    inputs={chartInputs}
+                    timeHorizonCards={timeHorizonCards}
+                    modelType={selectedModel}
+                    onModelChange={handleModelChange}
+                    onHistoryChange={handleHistoryChange}
+                    onForecastChange={handleForecastChange}
+                    isRunning={isRunning}
+                    isLoading={isLoading}
+                  />
+                }
+                title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[selectedModel]} model)`}
+                chartData={chartData}
+                dataHistorical={"historical"}
+                dataForecast={"forecast"}
+                name1={"Historical"}
+                name2={"Forecast"}
+                nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% Confidence Band`}
+                formatType={"currency"}
+                xLabel={'Date'}
+                yLabel={'Demand'}
               />
-              {chartData && (
-                <ForecastChart
-                  title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[selectedModel]} model)`}
-                  chartData={chartData}
-                  dataHistorical={"historical"}
-                  dataForecast={"forecast"}
-                  name1={"Historical"}
-                  name2={"Forecast"}
-                  nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% Confidence Band`}
-                  formatType={"currency"}
-                  xLabel={'Date'}
-                  yLabel={'Demand'}
-                />
-              )}
-            </div>
+            )}
           </div>
 
           {/* Tab 2: Forecast Overlay */}
           <div className='active-ci-overlay'>
-            <h2 className="section-heading">Forecast Overlay</h2>
+            <h2 className="section-heading">Forecast Overlay</h2>             
             {overlayData && (
               <ForecastOverlayChart
-                inputs={chartInputs}
+                controlPanel={
+                  <ControlPanel
+                    inputs={chartInputs}
+                    timeHorizonCards={timeHorizonCards}
+                    modelType={selectedModel}
+                    onModelChange={handleModelChange}
+                    onHistoryChange={handleHistoryChange}
+                    onForecastChange={handleForecastChange}
+                    isRunning={isRunning}
+                    isLoading={isLoading}
+                  />
+                }
                 modelType={selectedModel}
                 chartData={overlayData}
-                onModelChange={handleModelChange}
-                onHistoryChange={handleHistoryChange}
-                onForecastChange={handleForecastChange}
-                isRunning={isRunning}
+                nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% CI`}
               />
             )}
           </div>

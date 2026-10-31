@@ -80,6 +80,8 @@ export interface ModelResults {
   }
 }
 
+export type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'csvInputs'>;
+
 export interface ForecastChartData {
   date: string;
   historical: number | null;

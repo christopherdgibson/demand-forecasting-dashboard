@@ -21,7 +21,7 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
   const [selectedDateCol, setSelectedDateCol] = useState<string>("");
   const [selectedTargetCol, setSelectedTargetCol] = useState<string>("");
   const [selectedFreq, setSelectedFreq] = useState<string>("MS");
-  const [isCurrentData, setIsCurrentData] = useState<boolean>(false);
+  const [isCurrentData, setIsCurrentData] = useState<boolean>(false); // Must have separate state from parent since this current implies sample not current. Consolidate with non-boolean state?
   const [selectedFileName, setSelectedFileName] = useState<string>("");
 
   useEffect(() => {

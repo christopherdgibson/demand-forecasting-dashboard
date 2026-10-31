@@ -1,3 +1,4 @@
+import { JSX } from 'react';
 import {
   ComposedChart,
   Line,
@@ -10,28 +11,23 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 
-import { ControlPanel} from '../components/Controls';
-import { roundNumber } from '../utils/numberUtils';
 import { CustomLegend } from './CustomLegend';
 import { CustomTooltip } from './CustomTooltip';
 
 import '../App/styles.css';
 
-import type { ColorEntry, ForecastChartInputs, ModelType, OverlayChartData } from '../types';
+import type { ColorEntry, ModelType, OverlayChartData } from '../types';
 
 interface OverlayChartProps {
-    inputs: ForecastChartInputs;
+    controlPanel?: JSX.Element;
     modelType: ModelType;
     chartData: Array<OverlayChartData>;
-    onForecastChange: (updatedParams: ForecastChartInputs) => void;
-    onModelChange: (updatedParams: ModelType) => void;
-    onHistoryChange: (newPeriods: number) => void;
-    isRunning: boolean;
+    nameCI: string;
 }
 
-type SeriesKeys = 'historical' | 'forecast_ets' | 'forecast_sarimax' | 'forecast_theta' | 'ets_ci' | 'sarimax_ci' | 'theta_ci';
+const seriesOrder = ['historical', 'forecast_ets', 'forecast_sarimax', 'forecast_theta'] as const;
 
-const seriesOrder: SeriesKeys[] = ['historical', 'forecast_ets', 'forecast_sarimax', 'forecast_theta'];
+type SeriesKeys = typeof seriesOrder[number] | 'ets_ci' | 'sarimax_ci' | 'theta_ci';
 
 const activeForecast: Record<ModelType, SeriesKeys> = {
     ets: "forecast_ets",
@@ -55,32 +51,22 @@ const colorMap: Record<SeriesKeys, ColorEntry> = {
     theta_ci: {color: '#f59e0b', opacity: 0.4}
 }
 
-const nameMap: Record<SeriesKeys, string> = {
-    historical: 'Historical',
-    forecast_ets: 'Forecast ETS',
-    forecast_sarimax: 'Forecast Sarimax',
-    forecast_theta: 'Forecast Theta',
-    ets_ci: "ETS 95% CI",
-    sarimax_ci: "Sarimax 95% CI",
-    theta_ci: "Theta 95% CI"
-}
-
-export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastChange, onModelChange, onHistoryChange, isRunning }: OverlayChartProps) {
+export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameCI }: OverlayChartProps) {
     if (!chartData || chartData.length === 0) return null;
-    const CILabel = `${roundNumber((1-inputs.alpha)*100, 1)}% CI`;
     const seriesOrderActive = [...seriesOrder, activeCI[modelType]];
+    const nameMap: Record<SeriesKeys, string> = {
+        historical: 'Historical',
+        forecast_ets: 'Forecast ETS',
+        forecast_sarimax: 'Forecast Sarimax',
+        forecast_theta: 'Forecast Theta',
+        ets_ci: `ETS ${nameCI}`,
+        sarimax_ci: `Sarimax ${nameCI}`,
+        theta_ci: `Theta ${nameCI}`
+    }
 
     return (
         <div className={'chart-card'}>
-            <ControlPanel
-                inputs={{alpha: inputs.alpha, steps: inputs.steps, history: inputs.history}}
-                modelType={modelType}
-                onModelChange={onModelChange}
-                onHistoryChange={onHistoryChange}
-                onForecastChange={onForecastChange}
-                isRunning={isRunning}
-            />
-          
+            {controlPanel}          
             <h3 className={'chart-title'}>Demand Forecast Overlay</h3>
             <div className={'chart-container'}>
                 <ResponsiveContainer width="100%" height="100%">
@@ -142,7 +128,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                                 fill={colorMap['forecast_ets'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
-                                name={`ETS ${CILabel}`}
+                                name={nameMap['ets_ci']}
                             />
                         }
                         {modelType === 'sarimax' &&
@@ -152,7 +138,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                                 fill={colorMap['forecast_sarimax'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
-                                name={`Sarimax ${CILabel}`}
+                                name={nameMap['sarimax_ci']}
                             />
                         }
                         {modelType === 'theta' &&
@@ -162,7 +148,7 @@ export function ForecastOverlayChart({ inputs, modelType, chartData, onForecastC
                                 fill={colorMap['forecast_theta'].color}
                                 fillOpacity={0.1}
                                 stroke="none"
-                                name={`Theta ${CILabel}`}
+                                name={nameMap['theta_ci']}
                             />
                         }
                         <Line

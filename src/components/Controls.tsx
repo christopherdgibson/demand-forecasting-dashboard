@@ -1,12 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import '../App/styles.css';
-import type {CardInputs, ControlsBase, ForecastChartInputs, ModelType } from '../types';
-
-type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'csvInputs'>;
+import type {CardInputs, ControlsBase, ForecastChartInputs, ForecastHorizonKeys, ModelType } from '../types';
 
 interface ControlsProps extends ControlsBase {
   inputs: ForecastChartInputs;
+  timeHorizonCards: Record<ForecastHorizonKeys, CardInputs>;
   modelType: ModelType;
   onModelChange: (updatedParams: ModelType) => void;
   onHistoryChange: (newPeriods: number) => void;
@@ -39,7 +38,7 @@ function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value
       setLocalValue(String(value));
     }, [value]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { //TODO: Updated data should truncate max automatically if applicable
       const rawText = e.target.value;
       setLocalValue(rawText);
 
@@ -136,23 +135,8 @@ function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value
     );
 }
 
-export function ControlPanel({inputs, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+export function ControlPanel({inputs, timeHorizonCards, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
   const inputKeys: ForecastHorizonKeys[] = ['history', 'steps'];
-  const cards: Record<ForecastHorizonKeys, CardInputs> = {
-    history: {
-      title: "Historic Horizon",
-      hint: "Previous Periods",
-      min: 1,
-      // max: inputs.
-      step: 1,
-    },
-    steps: {
-      title: "Prediction Horizon",
-      hint: "Forecast Periods",
-      min: 1,
-      step: 1,
-    }
-  };
 
   const alphaCard = {
     title: 'Confidence Interval (α)',
@@ -226,7 +210,7 @@ export function ControlPanel({inputs, modelType, onModelChange, onHistoryChange,
       <h3 className={'controls-subTitle'}>Time Horizon Parameters</h3>
       <div className={'controls-grid'}>
         {inputKeys.map((inputKey) => {
-            const card = cards[inputKey];
+            const card = timeHorizonCards[inputKey];
             const rawValue = inputs[inputKey];
 
             if (!card || typeof rawValue !== 'number') {

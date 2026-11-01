@@ -66,7 +66,7 @@ export default function App() {
   const [activeChartTab, setActiveChartTab] = useState<string | null>('forecast');
   const [activeSourceTab, setActiveSourceTab] = useState<string | null>('sample-data');
   const [activeErrorModal, setActiveErrorModal] = useState<boolean>(false);
-  const [modalError, setModalError] = useState<ErrorMessage | null>(null);
+  const [modalErrorMessage, setModalErrorMessage] = useState<ErrorMessage | null>(null);
   const [isRunning, setIsRunning] = useState(false);
 
   // Hooks
@@ -77,12 +77,14 @@ export default function App() {
 
   // Input states
   const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>(DEFAULT_CSV_INPUTS['targetCol'] as SampleDataKey);
-  const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
-  const [selectedPastPeriods, setSelectedPastPeriods] = useState<number>(24);
-  const [forecastInputs, setForecastInputs] = useState<ForecastProps>({csvInputs: DEFAULT_CSV_INPUTS, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
-  const [chartInputs, setChartInputs] = useState<ForecastChartInputs>({...forecastInputs, history: selectedPastPeriods});
+  const [forecastInputs, setForecastInputs] = useState<ForecastProps>({csvInputs: DEFAULT_CSV_INPUTS, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA}); // TODO: Split into fit and forecast states?
   const [isCurrentData, setIsCurrentData] = useState<boolean>(false);
   const isSample = (forecastInputs.csvInputs.isString == false); // Keeps track of setting sample data as active
+
+  // Display states (reactively affect chart results)
+  const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
+  const [selectedPastPeriods, setSelectedPastPeriods] = useState<number>(24);
+  const [chartInputs, setChartInputs] = useState<ForecastChartInputs>({...forecastInputs, history: selectedPastPeriods});
 
   // Derived data
   const [fullAdjustedHistory, setFullAdjustedHistory] = useState<Array<OverlayChartData> | null>(null);
@@ -112,7 +114,7 @@ export default function App() {
   useEffect(() => {
     if (isLoading || hasFetchedRef.current) return;
     hasFetchedRef.current = true;
-    runForecast(forecastInputs);
+    handleRun();
   }, [isLoading]);
 
   useEffect(() => {
@@ -197,10 +199,13 @@ export default function App() {
     setChartData(convertChartData(selectedModel, combinedDataset))
   }
 
+  const nextPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
+
   const handleRun = async () => {
     setIsRunning(true);
+    await nextPaint(); // lets React commit and the browser paint (unneeded if move to worker?)
     try {
-      runForecast(forecastInputs);
+      await runForecast(forecastInputs);
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
       const header = 'Simulation execution failed';
@@ -224,7 +229,7 @@ export default function App() {
   };
 
   function handleErrorResponse(error: ErrorMessage) {
-    setModalError(error);
+    setModalErrorMessage(error);
     setActiveErrorModal(true);
   }
 
@@ -257,8 +262,8 @@ export default function App() {
 
         <InstructionsCard/>
 
-        {activeErrorModal && !isLoading && !isRunning && modalError &&
-          <ErrorModal activeModal={activeErrorModal} setActiveModal={setActiveErrorModal} error={modalError}/>
+        {activeErrorModal && !isLoading && !isRunning && modalErrorMessage &&
+          <ErrorModal activeModal={activeErrorModal} setActiveModal={setActiveErrorModal} error={modalErrorMessage}/>
         }
 
         {/* Source Dataset */}

@@ -38,7 +38,13 @@ function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value
       setLocalValue(String(value));
     }, [value]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => { //TODO: Updated data should truncate max automatically if applicable
+    useEffect(() => {
+      if (value) {
+        safeSetValue(value);
+      }
+    }, [isRunning]);
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const rawText = e.target.value;
       setLocalValue(rawText);
 
@@ -196,39 +202,39 @@ export function ControlPanel({inputs, timeHorizonCards, modelType, onModelChange
 
         {/* Confidence Interval */}
         <div className={'field-group'}>
-            <ControlCard
-                card={alphaCard}
-                inputKey={'alpha'}
-                value={inputs.alpha}
-                updateConfig={handleInputsChange}
-                isRunning={isRunning}
-                isLoading={isLoading}
-            />
+          <ControlCard
+            card={alphaCard}
+            inputKey={'alpha'}
+            value={inputs.alpha}
+            updateConfig={handleInputsChange}
+            isRunning={isRunning}
+            isLoading={isLoading}
+          />
         </div>
       </div>
 
       <h3 className={'controls-subTitle'}>Time Horizon Parameters</h3>
       <div className={'controls-grid'}>
         {inputKeys.map((inputKey) => {
-            const card = timeHorizonCards[inputKey];
-            const rawValue = inputs[inputKey];
+          const card = timeHorizonCards[inputKey];
+          const rawValue = inputs[inputKey];
 
-            if (!card || typeof rawValue !== 'number') {
-                return null;
-            }
+          if (!card || typeof rawValue !== 'number') {
+            return null;
+          }
 
-            return (
-                <div key={String(inputKey)} className={'field-group'}>
-                    <ControlCard
-                        card={card}
-                        inputKey={inputKey}
-                        value={rawValue}
-                        updateConfig={handleInputsChange}
-                        isRunning={isRunning}
-                        isLoading={isLoading}
-                    />
-                </div>
-            );
+          return (
+            <div key={String(inputKey)} className={'field-group'}>
+              <ControlCard
+                card={card}
+                inputKey={inputKey}
+                value={rawValue}
+                updateConfig={handleInputsChange}
+                isRunning={isRunning}
+                isLoading={isLoading}
+              />
+            </div>
+          );
         })}
       </div>
     </>

@@ -95,12 +95,14 @@ def fit_models(source,
     STATE["last_date"] = pd.to_datetime(last_date)
     STATE["freq"] = freq
     sp = get_seasonal_period(freq)
+    seasonal = sp > 1
 
     # 1. Fit ETS Model
     try:
         ets_fit = ETSModel(
-            actuals, error='add', trend='add', seasonal='add', seasonal_periods=sp
-        ).fit()
+            actuals, error='add', trend='add', 
+            seasonal='add' if seasonal else None,
+            seasonal_periods=sp if seasonal else None).fit()
         STATE["models"]["ets"] = ets_fit
         ets_resid = actuals - ets_fit.fittedvalues
         STATE["metrics"]["ets"] = {
@@ -115,7 +117,8 @@ def fit_models(source,
     # 2. Fit SARIMAX Model (Order: p=1, d=1, q=1, Seasonal: P=1, D=1, Q=1, s=12)
     try:
         sarimax_fit = SARIMAX(
-            actuals, order=(1, 1, 1), seasonal_order=(1, 1, 1, sp)
+            actuals, order=(1, 1, 1),
+            seasonal_order=(1, 1, 1, sp) if seasonal else (0, 0, 0, 0)
         ).fit(disp=False)
         STATE["models"]["sarimax"] = sarimax_fit
         sarimax_resid = actuals - sarimax_fit.fittedvalues
@@ -131,7 +134,7 @@ def fit_models(source,
 
     # 3. Fit Theta Model
     try:
-        theta_fit = ThetaModel(actuals, period=sp).fit()
+        theta_fit = ThetaModel(actuals, period=sp if seasonal else None, deseasonalize=seasonal).fit()
         STATE["models"]["theta"] = theta_fit
         
         # Extract metrics or residuals
@@ -253,6 +256,8 @@ def get_seasonal_period(freq: str) -> int:
     freq = freq.upper()
     if freq.startswith('M'):
         return 12
+    elif freq.startswith('Y'):
+        return 1
     elif freq.startswith('Q'):
         return 4
     elif freq.startswith('W'):
@@ -265,6 +270,8 @@ def get_seasonal_period(freq: str) -> int:
 def get_seasonal_offsets(freq: str, steps: int) -> Tuple[Any, Any]:
     if freq.startswith('M'):
         return pd.DateOffset(months=1), pd.DateOffset(months=steps)
+    elif freq.startswith('Y'):
+        return pd.DateOffset(years=1), pd.DateOffset(years=steps)
     elif freq.startswith('Q'):
         return pd.DateOffset(months=3), pd.DateOffset(months=3 * steps)
     elif freq.startswith('W'):

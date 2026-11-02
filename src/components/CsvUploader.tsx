@@ -129,7 +129,7 @@ export function CsvUploader({ onDataChange }: CsvUploaderProps) {
                 value={customInputs.freq}
                 onChange={(e) => handleInputChange('freq', e.target.value)}
               >
-                <option key={'Annual'} value={'A'}>Annual</option>
+                <option key={'Annual'} value={'YS'}>Annual</option>
                 <option key={'Quarterly'} value={'QS'}>Quarterly</option>
                 <option key={'Monthly'} value={'MS'}>Monthly</option>
                 <option key={'Weekly'} value={'W'}>Weekly</option>

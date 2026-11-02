@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePyodide } from '../hooks/usePyodide';
 import { usePyodideWorker } from '../hooks/usePyodideWorker';
 import { useTheme } from '../hooks/useTheme';
@@ -16,18 +16,18 @@ import { Metrics } from '../components/MetricsCard';
 import { CsvUploader } from '../components/CsvUploader';
 
 import { roundNumber } from '../utils/numberUtils';
-import { adjustHistory, convertChartData, reshapeRows } from '../utils/dataUtils';
+import { adjustHistory, convertChartData, reshapeRows, shallowEqual } from '../utils/dataUtils';
 
 import './styles.css'
 
 import type {
   CardInputs,
+  CsvCustomInputs,
   CsvLoadInputs,
   ErrorMessage,
-  ForecastChartData,
   ForecastChartInputs,
   ForecastHorizonKeys,
-  ForecastInputs,
+  ForecastParameters,
   ForecastProps,
   ForecastResults,
   ModelMetrics,
@@ -35,7 +35,7 @@ import type {
   OverlayChartData 
 } from '../types';
 
-type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA';
+type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA' | 'custom';
 
 const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
   source: 'RSXFSN.csv',
@@ -48,7 +48,8 @@ const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
 const SAMPLE_FREQ_MAP: Record<SampleDataKey, string> = {
   RSXFSN: 'MS', // Advance Retail Sales: Retail Trade (NSA)
   RSAFSNA: 'MS', // Advance Retail Sales: Retail Trade and Food Services (NSA)
-  ECOMPCTNSA: 'QS' // E-Commerce Retail Sales as a Percent of Total Sales (NSA)
+  ECOMPCTNSA: 'QS', // E-Commerce Retail Sales as a Percent of Total Sales (NSA)
+  custom: 'MS' // Default custom to monthly, consistent with CsvUploader
 }
 
 const DEFAULT_FORECAST_STEPS = 12;
@@ -59,6 +60,8 @@ const modelNameMap: Record<ModelType, string> = {
   sarimax: 'SARIMAX',
   theta: 'Theta'
 }
+
+const nextPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
 export default function App() {
   // UI states
@@ -71,34 +74,31 @@ export default function App() {
 
   // Hooks
   const {activeTheme, setActiveTheme} = useTheme();
-  const { hues, setHues, activePreset } = useHue();
+  const {hues, setHues, activePreset} = useHue();
   const {isLoading, fitModels, updateForecasts} = usePyodide();
   // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
 
   // Input states
   const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>(DEFAULT_CSV_INPUTS['targetCol'] as SampleDataKey);
-  const [forecastInputs, setForecastInputs] = useState<ForecastProps>({csvInputs: DEFAULT_CSV_INPUTS, steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA}); // TODO: Split into fit and forecast states?
-  const [isCurrentData, setIsCurrentData] = useState<boolean>(false);
-  const isSample = (forecastInputs.csvInputs.isString == false); // Keeps track of setting sample data as active
+  const [customCsvData, setCustomCsvData] = useState<CsvCustomInputs | null>(null);
+  const [modelFitInputs, setModelFitInputs] = useState<CsvLoadInputs>(DEFAULT_CSV_INPUTS);
+  const [activeModelInputs, setActiveModelInputs] = useState<CsvLoadInputs | null>(null);
 
   // Display states (reactively affect chart results)
   const [selectedModel, setSelectedModel] = useState<ModelType>('ets');
   const [selectedPastPeriods, setSelectedPastPeriods] = useState<number>(24);
-  const [chartInputs, setChartInputs] = useState<ForecastChartInputs>({...forecastInputs, history: selectedPastPeriods});
+  const [forecastParameters, setForecastParameters] = useState<ForecastParameters>({steps: DEFAULT_FORECAST_STEPS, alpha: DEFAULT_ALPHA});
 
   // Derived data
   const [fullAdjustedHistory, setFullAdjustedHistory] = useState<Array<OverlayChartData> | null>(null);
-  const [forecastData, setForecastData] = useState<Array<OverlayChartData>>();
-  const [overlayData, setOverlayData] = useState<Array<OverlayChartData> | null>(null);
-  const [chartData, setChartData] = useState<Array<ForecastChartData> | null>(null);
+  const [forecastData, setForecastData] = useState<Array<OverlayChartData> | null>(null);
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
-  const [metrics, setMetrics] = useState<ModelMetrics | null>(null);  
 
   const timeHorizonCards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
       title: "Historic Horizon",
       hint: "Previous Periods",
-      min: 1,
+      min: 0,
       max: fullAdjustedHistory?.length,
       step: 1,
     },
@@ -117,95 +117,74 @@ export default function App() {
     handleRun();
   }, [isLoading]);
 
-  useEffect(() => {
-    setChartInputs({...forecastInputs, history: selectedPastPeriods});
-  }, [forecastInputs]);
+  const overlayData = useMemo(
+    () => fullAdjustedHistory && forecastData
+      ? [...fullAdjustedHistory.slice(-(selectedPastPeriods + 1)), ...forecastData]
+      : null,
+    [fullAdjustedHistory, forecastData, selectedPastPeriods]
+  );
 
-  useEffect(() => {
-    setIsCurrentData(isSample);
-  }, [isSample]);
+  const chartInputs: ForecastChartInputs = useMemo(
+    () =>  ({...forecastParameters, history: selectedPastPeriods}),
+    [forecastParameters, selectedPastPeriods]
+  );
 
-  async function runForecast({steps, alpha, csvInputs}: ForecastProps): Promise<void> {
-    setForecastInputs({csvInputs, steps, alpha})
+  const forecastCurrent = useMemo(
+    () => shallowEqual(modelFitInputs, activeModelInputs),
+    [modelFitInputs, activeModelInputs]
+  );
+
+  // Derived data use current values
+  const chartData = useMemo(
+    () => convertChartData(selectedModel, overlayData),
+    [selectedModel, overlayData]
+  );
+
+  const metrics = metricsMap[selectedModel] ?? null;
+
+  async function runForecast({ csvInputs, steps, alpha }: ForecastProps): Promise<void> {
     const modelResponse = await fitModels(csvInputs);
-    if (modelResponse && modelResponse.success === false) {
+    if (modelResponse.success === false) {
       handleErrorResponse(modelResponse);
       return;
     }
 
-    const modelResults = modelResponse !== null ? modelResponse.result : null;
-    const adjustedHistory = modelResults !== null ? adjustHistory(modelResults.data) : null;
-    setFullAdjustedHistory(adjustedHistory);
-
-    const modelMetrics = modelResults !== null ? modelResults.metrics : null;    
-    if (modelMetrics) {
-      setMetricsMap(modelMetrics);
-      setMetrics(modelMetrics[selectedModel]);
-    }
-
-    const forecastResponse = await updateForecasts({steps, alpha});
-    if (forecastResponse && forecastResponse.success === false) {
+    const forecastResponse = await updateForecasts({ steps, alpha });
+    if (forecastResponse.success === false) {
       handleErrorResponse(forecastResponse);
       return;
     }
 
-    if (adjustedHistory && forecastResponse) {
-      updateChartData(adjustedHistory, forecastResponse.result)
-    }
-  }
-
-  // Change active forecast without backend update
-  const handleModelChange = (modelType: ModelType) => {
-    setSelectedModel(modelType);
-    setMetrics(metricsMap[modelType]);
-    setChartData(convertChartData(modelType, overlayData))
+    // Both succeeded: commit everything in one render
+    setFullAdjustedHistory(adjustHistory(modelResponse.result.data));
+    setMetricsMap(modelResponse.result.metrics ?? {});
+    updateChartData(forecastResponse.result);
+    setActiveModelInputs(csvInputs);
   }
 
   // Update chart input changes moves (No refitting)
-  const handleForecastChange = async ({steps, alpha}: ForecastInputs): Promise<void> => {
-    setForecastInputs({...forecastInputs, steps, alpha});
-    setMetrics(metricsMap[selectedModel]); // historical metrics should not need updating with forecast changes?
+  const handleForecastChange = async ({ steps, alpha }: ForecastParameters) => {
+    setForecastParameters({...forecastParameters, steps, alpha});
 
     const forecastResponse = await updateForecasts({steps, alpha});
-    if (forecastResponse && forecastResponse.success === false) {
+    if (forecastResponse.success === false) {
       handleErrorResponse(forecastResponse);
       return;
     }
-    if (forecastResponse && fullAdjustedHistory) {
-      updateChartData(fullAdjustedHistory, forecastResponse.result);
-    }
-  }
-  
-  function handleHistoryChange(newPeriods: number) {
-    setSelectedPastPeriods(newPeriods);
-    setChartInputs({...chartInputs, history: newPeriods});
-
-    if (fullAdjustedHistory && forecastData) {
-      const truncatedHistory =  fullAdjustedHistory.slice(-(newPeriods + 1));
-      const combinedDataset = [...truncatedHistory, ...forecastData];
-
-      setOverlayData(combinedDataset);
-      setChartData(convertChartData(selectedModel, combinedDataset));
-    }
+    
+    updateChartData(forecastResponse.result);
   }
 
-  const updateChartData = (adjustedHistory: Array<OverlayChartData>, forecastResults: ForecastResults): void => {
+  const updateChartData = (forecastResults: ForecastResults): void => {
     const reshaped = reshapeRows(forecastResults);
     setForecastData(reshaped);
-    const truncatedHistory = adjustedHistory.slice(-selectedPastPeriods);
-
-    const combinedDataset = [...truncatedHistory, ...reshaped];
-    setOverlayData(combinedDataset);
-    setChartData(convertChartData(selectedModel, combinedDataset))
   }
-
-  const nextPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
   const handleRun = async () => {
     setIsRunning(true);
     await nextPaint(); // lets React commit and the browser paint (unneeded if move to worker?)
     try {
-      await runForecast(forecastInputs);
+      await runForecast({csvInputs: modelFitInputs, ...forecastParameters});
     } catch (err) {
       const raw = err instanceof Error ? err.message : String(err);
       const header = 'Simulation execution failed';
@@ -223,10 +202,17 @@ export default function App() {
     }
   };
 
-  const handleCustomDataReady = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
-    setForecastInputs({...forecastInputs, csvInputs: {source, isString, dateCol, targetCol, freq}});
-    // setIsCurrentData(false); // might change sample state here instead of with useEffect[sample] above?
+  // Set inputs and store data for recall in data dropdown
+  const handleCustomDataChange = ({filename, source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvCustomInputs) => {
+    setCustomModelInputs({source, isString, dateCol, targetCol, freq});
+    setCustomCsvData({filename, source, isString, dateCol, targetCol, freq});
+    setSelectedSampleData('custom');
   };
+
+  // Drops custom name to set model fit inputs
+  const setCustomModelInputs = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
+    setModelFitInputs({source, isString, dateCol, targetCol, freq});
+  }
 
   function handleErrorResponse(error: ErrorMessage) {
     setModalErrorMessage(error);
@@ -276,7 +262,13 @@ export default function App() {
               Sample Data
             </button>
             <button
-              onClick={() => setActiveSourceTab('custom-data')}
+              onClick={() => {
+                if (customCsvData) {
+                  setSelectedSampleData('custom');
+                  setCustomModelInputs(customCsvData);
+                };
+                setActiveSourceTab('custom-data')
+              }}
               className={`tab-btn ${activeSourceTab === 'custom-data' ? 'active' : ''}`}
             >
               Upload Data
@@ -301,37 +293,35 @@ export default function App() {
                     value={selectedSampleData}
                     disabled={isRunning || isLoading}
                     onChange={(e) => {
-                      setSelectedSampleData(e.target.value as SampleDataKey);
-                      setIsCurrentData(false);
+                      const selectedValue = e.target.value as SampleDataKey;
+                      setSelectedSampleData(selectedValue);
+                      if (selectedValue === 'custom') {
+                        if (!customCsvData) return;
+                        setCustomModelInputs(customCsvData)
+                      } else {
+                        setModelFitInputs({source: `${selectedValue}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedValue, freq: SAMPLE_FREQ_MAP[selectedValue]});
+                      }                  
                     }}
                   >
-                    <option value="RSXFSN">FRED Retail Data</option>
-                    <option value="RSAFSNA">FRED Retail and Food Data</option>
-                    <option value="ECOMPCTNSA">FRED E-Commerce Data</option>
+                    <option value='RSXFSN'>FRED Retail Data</option>
+                    <option value='RSAFSNA'>FRED Retail and Food Data</option>
+                    <option value='ECOMPCTNSA'>FRED E-Commerce Data</option>
+                    {customCsvData && <option value='custom'>Custom Data: {customCsvData.filename}</option>}
                   </select>
                 </div>
-                <button
-                  className={'secondary-button'}
-                  disabled={isCurrentData}
-                  onClick={() => {
-                    setForecastInputs({...forecastInputs, csvInputs: {source: `${selectedSampleData}.csv`, isString: false, dateCol: 'observation_date', targetCol: selectedSampleData, freq: SAMPLE_FREQ_MAP[selectedSampleData] }});
-                    setIsCurrentData(true);
-                  }}
-                >
-                  {isCurrentData ? "Updated" : "Update Data"}
-                </button>
               </div>
             </div>
             <div className='active-custom-data'>                  
-              <CsvUploader isSample={isSample} onDataReady={handleCustomDataReady}/>
+              <CsvUploader onDataChange={handleCustomDataChange}/>
             </div>
             <div className={'actions'}>
               <button
                 className={'primary-button'}
                 onClick={handleRun}
-                disabled={isRunning || isLoading}
+                disabled={forecastCurrent || isRunning || isLoading}
               >
-                {isRunning ? 'Running Forecast...' : 'Run Forecast'}
+                {isRunning ? 'Running Forecast...'
+                  : forecastCurrent ? 'Up to date!' : 'Run Forecast'}
               </button>
             </div>
           </div>
@@ -372,8 +362,8 @@ export default function App() {
                     inputs={chartInputs}
                     timeHorizonCards={timeHorizonCards}
                     modelType={selectedModel}
-                    onModelChange={handleModelChange}
-                    onHistoryChange={handleHistoryChange}
+                    onModelChange={setSelectedModel}
+                    onHistoryChange={setSelectedPastPeriods}
                     onForecastChange={handleForecastChange}
                     isRunning={isRunning}
                     isLoading={isLoading}
@@ -385,7 +375,7 @@ export default function App() {
                 dataForecast={"forecast"}
                 name1={"Historical"}
                 name2={"Forecast"}
-                nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% Confidence Band`}
+                nameCI={`${roundNumber((1-forecastParameters.alpha)*100, 1)}% Confidence Band`}
                 formatType={"currency"}
                 xLabel={'Date'}
                 yLabel={'Demand'}
@@ -403,8 +393,8 @@ export default function App() {
                     inputs={chartInputs}
                     timeHorizonCards={timeHorizonCards}
                     modelType={selectedModel}
-                    onModelChange={handleModelChange}
-                    onHistoryChange={handleHistoryChange}
+                    onModelChange={setSelectedModel}
+                    onHistoryChange={setSelectedPastPeriods}
                     onForecastChange={handleForecastChange}
                     isRunning={isRunning}
                     isLoading={isLoading}
@@ -412,7 +402,7 @@ export default function App() {
                 }
                 modelType={selectedModel}
                 chartData={overlayData}
-                nameCI={`${roundNumber((1-forecastInputs.alpha)*100, 1)}% CI`}
+                nameCI={`${roundNumber((1-forecastParameters.alpha)*100, 1)}% CI`}
               />
             )}
           </div>

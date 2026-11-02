@@ -1,49 +1,37 @@
-import { ChangeEvent, useEffect, useState } from "react";
+import { ChangeEvent, useState } from "react";
 
-import type { CsvLoadInputs } from "../types";
+import type { CsvCustomInputs, CsvLoadInputs } from "../types";
 
 import '../App/styles.css';
 
 interface CsvUploaderProps {
-  isSample: boolean;
-  onDataReady: ({
+  onDataChange: ({
+    filename,
     source,
     isString,
     dateCol,
     targetCol,
     freq,
-  }: CsvLoadInputs) => void;
+  }: CsvCustomInputs) => void;
 }
 
-export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
+export function CsvUploader({ onDataChange }: CsvUploaderProps) {
   const [columns, setColumns] = useState<string[]>([]);
-  const [csvContent, setCsvContent] = useState<string>("");
-  const [selectedDateCol, setSelectedDateCol] = useState<string>("");
-  const [selectedTargetCol, setSelectedTargetCol] = useState<string>("");
-  const [selectedFreq, setSelectedFreq] = useState<string>("MS");
-  const [isCurrentData, setIsCurrentData] = useState<boolean>(false); // Must have separate state from parent since this current implies sample not current. Consolidate with non-boolean state?
-  const [selectedFileName, setSelectedFileName] = useState<string>("");
+  const [customInputs, setCustomInputs] = useState<CsvCustomInputs>({filename: '', source: '', isString: true, dateCol: '', targetCol: '', freq: 'MS'});
 
-  useEffect(() => {
-    setIsCurrentData(false);
-  }, [csvContent, selectedDateCol, selectedTargetCol, selectedFreq]);
-
-  useEffect(() => {
-    setIsCurrentData(!isSample);
-  }, [isSample]);
 
   // Read file and extract headers on selection
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    let inputs: CsvCustomInputs;
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
       if (!text) return;
 
-      setCsvContent(text);
-      setSelectedFileName(file.name);
+      inputs = {...inputs, filename: file.name, source: text, isString: true, freq: 'MS'};
 
       // Extract the first line for headers
       const firstLine = text.split(/\r?\n/)[0];
@@ -53,28 +41,26 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
 
       setColumns(headers);
       if (headers.length > 0) {
-        setSelectedDateCol(headers[0]); // Default guess
-        setSelectedTargetCol(headers[1] || headers[0]);
+        inputs = {...inputs, dateCol: headers[0], targetCol: headers[1] || headers[0]};
       }
+
+      updateInputs(inputs);
     };
     reader.readAsText(file);
   };
 
-  // Submit the final mapping and full text to Pyodide
-  const handleSubmit = () => {
-    if (!csvContent || !selectedDateCol || !selectedTargetCol || !selectedFreq) {
-      return;
-    }
-    onDataReady({
-      source: csvContent,
-      isString: true,
-      dateCol: selectedDateCol,
-      targetCol: selectedTargetCol,
-      freq: selectedFreq,
-    });
-
-    setIsCurrentData(true);
+  const handleInputChange = <F extends keyof CsvLoadInputs> (
+      field: F,
+      value: CsvLoadInputs[F]
+    ) => {
+    const inputs = {...customInputs, [field]: value};
+    updateInputs(inputs);
   };
+
+  function updateInputs(inputs: CsvCustomInputs) {
+    setCustomInputs(inputs);
+    onDataChange(inputs);
+  }
 
   return (
     <>
@@ -84,77 +70,73 @@ export function CsvUploader({ isSample, onDataReady }: CsvUploaderProps) {
       </div>
       <div className={'csv-inputs'}>
         <div className={'custom-csv-upload'}>
+          <div className={'field-group'}>
+          <label className={'label'}>
+            <span>Data Source</span>
+          </label>
           <label htmlFor="csv-upload" className={'secondary-button'}>Custom Upload</label>
           <input id="csv-upload" type="file" accept=".csv" onChange={handleFileChange} />
-          {selectedFileName}
+          </div>
+          <div className={'custom-csv-grid'}>
+            <span>{customInputs.filename}</span>
+          </div>
         </div>
 
         {columns.length > 0 && (
-          <>
-            <div className={'csv-inputs-grid'}>
-              <div className={'field-group'}>
-                <label className={'label'}>
-                  Date Column:
-                  <span className={'hint'}>Dates</span>
-                </label>
-                <select
-                  className={`${'input'} ${'dropdown'}`}
-                  value={selectedDateCol}
-                  onChange={(e) => setSelectedDateCol(e.target.value)}
-                >
-                  {columns.map((col) => (
-                    <option key={col} value={col}>
-                      {col}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={'field-group'}>
-                <label className={'label'}>
-                  Demand / Target Column:
-                  <span className={'hint'}>Data Values</span>
-                </label>
-                <select
-                  className={'input dropdown'}
-                  value={selectedTargetCol}
-                  onChange={(e) => setSelectedTargetCol(e.target.value)}
-                >
-                  {columns.map((col) => (
-                    <option key={col} value={col}>
-                      {col}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className={'field-group'}>
-                <label className={'label'}>
-                  Frequency:
-                  <span className={'hint'}>Data Values</span>
-                </label>
-                <select
-                  className={'input dropdown'}
-                  value={selectedFreq}
-                  onChange={(e) => setSelectedFreq(e.target.value)}
-                >
-                  <option key={'Annual'} value={'A'}>Annual</option>
-                  <option key={'Quarterly'} value={'QS'}>Quarterly</option>
-                  <option key={'Monthly'} value={'MS'}>Monthly</option>
-                  <option key={'Weekly'} value={'W'}>Weekly</option>
-                  <option key={'Daily'} value={'D'}>Daily</option>
-                </select>
-              </div>
-            </div>
-            <div className={'actions'}>
-              <button
-                className={'secondary-button'}
-                disabled={isCurrentData}
-                onClick={handleSubmit}
+          <div className={'csv-inputs-grid'}>
+            <div className={'field-group'}>
+              <label className={'label'}>
+                Date Column:
+                <span className={'hint'}>Dates</span>
+              </label>
+              <select
+                className={'input dropdown'}
+                value={customInputs.dateCol}
+                onChange={(e) => handleInputChange('dateCol', e.target.value)}
               >
-                {isCurrentData ? "Updated" : "Update Data"}
-              </button>
+                {columns.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))}
+              </select>
             </div>
-          </>
+
+            <div className={'field-group'}>
+              <label className={'label'}>
+                Demand / Target Column:
+                <span className={'hint'}>Data Values</span>
+              </label>
+              <select
+                className={'input dropdown'}
+                value={customInputs.targetCol}
+                onChange={(e) => handleInputChange('targetCol', e.target.value)}
+              >
+                {columns.map((col) => (
+                  <option key={col} value={col}>
+                    {col}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className={'field-group'}>
+              <label className={'label'}>
+                Frequency:
+                <span className={'hint'}>Periodicity</span>
+              </label>
+              <select
+                className={'input dropdown'}
+                value={customInputs.freq}
+                onChange={(e) => handleInputChange('freq', e.target.value)}
+              >
+                <option key={'Annual'} value={'A'}>Annual</option>
+                <option key={'Quarterly'} value={'QS'}>Quarterly</option>
+                <option key={'Monthly'} value={'MS'}>Monthly</option>
+                <option key={'Weekly'} value={'W'}>Weekly</option>
+                <option key={'Daily'} value={'D'}>Daily</option>
+              </select>
+            </div>
+          </div>
         )}
       </div>
     </>

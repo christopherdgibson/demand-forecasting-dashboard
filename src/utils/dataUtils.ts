@@ -95,3 +95,10 @@ export function convertChartData(modelType: ModelType, dataNew: Array<OverlayCha
     )
   ));
 }
+
+export function shallowEqual<T extends object>(a: T | null, b: T | null): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  const keys = Object.keys(a) as (keyof T)[];
+  return keys.length === Object.keys(b).length && keys.every((k) => a[k] === b[k]);
+}

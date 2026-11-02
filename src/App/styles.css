@@ -436,7 +436,7 @@ input[type="range"] { accent-color: var(--brand); }
 .csv-inputs {
   display: flex;
   flex-direction: column;
-  padding: 20px 14px;
+  padding: 14px;
   margin-bottom: 24px;
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
@@ -460,4 +460,13 @@ input[type="range"] { accent-color: var(--brand); }
 
 .custom-csv-upload input[type="file"] {
   display: none;
+}
+
+.custom-csv-grid {
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+
+  span {
+    grid-row: 2;
+  }
 }

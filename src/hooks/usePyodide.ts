@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CsvLoadInputs, ErrorMessage, ForecastInputs, ForecastResults, ModelResults, SuccessResult } from '../types';
+import type { CsvLoadInputs, ErrorMessage, ForecastParameters, ForecastResults, ModelResults, SuccessResult } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
   args?: any[];
 }
-type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<SuccessResult<T> | ErrorMessage | null>;
+type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<SuccessResult<T> | ErrorMessage>;
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
@@ -61,10 +61,15 @@ export function usePyodide() {
 
   // 2. Centralized Pyodide Invocation Wrapper
   const callPyFunction = useCallback(
-    (async <T,>({ fnName, args = [] }: PyFunctionProps): Promise<SuccessResult<T> | ErrorMessage | null> => {
+    (async <T,>({ fnName, args = [] }: PyFunctionProps): Promise<SuccessResult<T> | ErrorMessage> => {
       if (!pyodide) {
         console.warn(`Attempted to call ${fnName} before Pyodide finished loading.`);
-        return null;
+        return {
+          success: false,
+          header: 'Python not ready',
+          type: 'NotReady',
+          message: 'The Python environment is still loading. Try again in a moment.',
+        };
       }
 
       let pyFunction: any = null;
@@ -117,7 +122,7 @@ export function usePyodide() {
 
   // 3. Public API: Initial Model Fit
   const fitModels = useCallback(
-    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<SuccessResult<ModelResults> | ErrorMessage | null> => {
+    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<SuccessResult<ModelResults> | ErrorMessage> => {
       const historical = await callPyFunction<ModelResults>({
         fnName: 'fit_models',
         args: [source, isString, dateCol, targetCol, freq],
@@ -129,7 +134,7 @@ export function usePyodide() {
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecasts = useCallback(
-    async ({steps, alpha}: ForecastInputs): Promise<SuccessResult<ForecastResults> | ErrorMessage | null> => {
+    async ({steps, alpha}: ForecastParameters): Promise<SuccessResult<ForecastResults> | ErrorMessage> => {
       return await callPyFunction<ForecastResults>({
         fnName: 'generate_forecasts',
         args: [steps, alpha],

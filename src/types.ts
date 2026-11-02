@@ -10,6 +10,10 @@ export interface CsvLoadInputs {
   freq: string
 }
 
+export interface CsvCustomInputs extends CsvLoadInputs {
+  filename: string;
+}
+
 export interface DemandProps {
   date: string;
   historical: number | null;
@@ -45,12 +49,12 @@ export interface SuccessResult<T> {
   result: T;
 }
 
-export interface ForecastInputs {
+export interface ForecastParameters {
   steps?: number;
   alpha: number;
 }
 
-export interface ForecastChartInputs extends ForecastInputs {
+export interface ForecastChartInputs extends ForecastParameters {
   history?: number;
 }
 

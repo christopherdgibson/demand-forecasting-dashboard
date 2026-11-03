@@ -20,7 +20,7 @@ import type { ColorStyle, ModelType, OverlayChartData } from '../types';
 
 interface OverlayChartProps {
     controlPanel?: JSX.Element;
-    modelType: ModelType;
+    activeModel: ModelType;
     chartData: Array<OverlayChartData>;
     nameCI: string;
 }
@@ -29,21 +29,15 @@ const seriesOrder = ['historical', 'forecast_ets', 'forecast_sarimax', 'forecast
 
 type SeriesKeys = typeof seriesOrder[number] | 'ets_ci' | 'sarimax_ci' | 'theta_ci';
 
-const activeForecast: Record<ModelType, SeriesKeys> = {
-    ets: "forecast_ets",
-    sarimax: "forecast_sarimax",
-    theta: "forecast_theta"
-}
-
 const activeCI: Record<ModelType, SeriesKeys> = {
     ets: "ets_ci",
     sarimax: "sarimax_ci",
     theta: "theta_ci"
 }
 
-export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameCI }: OverlayChartProps) {
+export function ForecastOverlayChart({ controlPanel, activeModel, chartData, nameCI }: OverlayChartProps) {
     if (!chartData || chartData.length === 0) return null;
-    const seriesOrderActive = [...seriesOrder, activeCI[modelType]];
+    const seriesOrderActive = [...seriesOrder, activeCI[activeModel]];
     const nameMap: Record<SeriesKeys, string> = {
         historical: 'Historical',
         forecast_ets: 'Forecast ETS',
@@ -56,9 +50,9 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
 
     const colorMap: Record<SeriesKeys, ColorStyle> = {
         historical: {shape: 'line', color: 'var(--brand)', opacity: 1},
-        forecast_ets: {shape: 'line', color: 'var(--series-ets)', opacity: 1, dash: modelType === 'ets' ? '0' : '6 4'},
-        forecast_sarimax: {shape: 'line', color: 'var(--series-sarimax)', opacity: 1, dash: modelType === 'sarimax' ? '0' : '2 4'},
-        forecast_theta: {shape: 'line', color: 'var(--series-theta)', opacity: 1, dash: modelType === 'theta' ? '0' : '10 3 2 3'},
+        forecast_ets: {shape: 'line', color: 'var(--series-ets)', opacity: 1, dash: activeModel === 'ets' ? '0' : '6 4'},
+        forecast_sarimax: {shape: 'line', color: 'var(--series-sarimax)', opacity: 1, dash: activeModel === 'sarimax' ? '0' : '2 4'},
+        forecast_theta: {shape: 'line', color: 'var(--series-theta)', opacity: 1, dash: activeModel === 'theta' ? '0' : '10 3 2 3'},
         ets_ci: {shape: 'area', color: "var(--series-ets)", opacity: 0.4},
         sarimax_ci: {shape: 'area', color:  'var(--series-sarimax)', opacity: 0.4},
         theta_ci: {shape: 'area', color: 'var(--series-theta)', opacity: 0.4}
@@ -120,7 +114,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                         />
 
                         {/* ETS Forecast */}
-                        {modelType === 'ets' &&
+                        {activeModel === 'ets' &&
                             <Area
                                 type="monotone"
                                 dataKey="ets_ci"
@@ -130,7 +124,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                                 name={nameMap['ets_ci']}
                             />
                         }
-                        {modelType === 'sarimax' &&
+                        {activeModel === 'sarimax' &&
                             <Area
                                 type="monotone"
                                 dataKey="sarimax_ci"
@@ -140,7 +134,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                                 name={nameMap['sarimax_ci']}
                             />
                         }
-                        {modelType === 'theta' &&
+                        {activeModel === 'theta' &&
                             <Area
                                 type="monotone"
                                 dataKey="theta_ci"
@@ -154,7 +148,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             type="monotone"
                             dataKey="forecast_ets"
                             stroke={colorMap['forecast_ets'].color}
-                            strokeWidth={modelType === 'ets' ? 2 : 1}
+                            strokeWidth={activeModel === 'ets' ? 2 : 1}
                             strokeDasharray={colorMap['forecast_ets'].dash}
                             name="ETS Forecast"
                             dot={false}
@@ -166,7 +160,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             type="monotone"
                             dataKey="forecast_sarimax"
                             stroke={colorMap['forecast_sarimax'].color}
-                            strokeWidth={modelType === 'sarimax' ? 2 : 1}
+                            strokeWidth={activeModel === 'sarimax' ? 2 : 1}
                             strokeDasharray={colorMap['forecast_sarimax'].dash}
                             name="SARIMAX Forecast"
                             dot={false}
@@ -178,7 +172,7 @@ export function ForecastOverlayChart({ controlPanel, modelType, chartData, nameC
                             type="monotone"
                             dataKey="forecast_theta"
                             stroke={colorMap['forecast_theta'].color}
-                            strokeWidth={modelType === 'theta' ? 2 : 1}
+                            strokeWidth={activeModel === 'theta' ? 2 : 1}
                             strokeDasharray={colorMap['forecast_theta'].dash}
                             name="Theta Forecast"
                             dot={false}

@@ -20,6 +20,7 @@ import { adjustHistory, convertChartData, reshapeRows, shallowEqual } from '../u
 
 import './styles.css'
 
+import { modelNameMap } from '../types';
 import type {
   CardInputs,
   CsvCustomInputs,
@@ -55,12 +56,6 @@ const SAMPLE_FREQ_MAP: Record<SampleDataKey, string> = {
 const DEFAULT_FORECAST_STEPS = 12;
 const DEFAULT_ALPHA = 0.05;
 
-const modelNameMap: Record<ModelType, string> = {
-  ets: 'ETS',
-  sarimax: 'SARIMAX',
-  theta: 'Theta'
-}
-
 const nextPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
 export default function App() {
@@ -93,6 +88,7 @@ export default function App() {
   const [fullAdjustedHistory, setFullAdjustedHistory] = useState<Array<OverlayChartData> | null>(null);
   const [forecastData, setForecastData] = useState<Array<OverlayChartData> | null>(null);
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
+  const [modelFailures, setModelFailures] = useState<Partial<Record<ModelType, string>>>({});
 
   const timeHorizonCards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
@@ -134,13 +130,18 @@ export default function App() {
     [modelFitInputs, activeModelInputs]
   );
 
+  const availableModels =  Object.keys(metricsMap) as ModelType[];
+  const activeModel = availableModels.includes(selectedModel)
+    ? selectedModel
+    : availableModels[0] ?? selectedModel;
+
   // Derived data use current values
   const chartData = useMemo(
-    () => convertChartData(selectedModel, overlayData),
-    [selectedModel, overlayData]
+    () => convertChartData(activeModel, overlayData),
+    [activeModel, overlayData]
   );
 
-  const metrics = metricsMap[selectedModel] ?? null;
+  const metrics = metricsMap[activeModel] ?? null;
 
   async function runForecast({ csvInputs, steps, alpha }: ForecastProps): Promise<void> {
     const modelResponse = await fitModels(csvInputs);
@@ -158,6 +159,7 @@ export default function App() {
     // Both succeeded: commit everything in one render
     setFullAdjustedHistory(adjustHistory(modelResponse.result.data));
     setMetricsMap(modelResponse.result.metrics ?? {});
+    setModelFailures(modelResponse.result.failures ?? {});
     updateChartData(forecastResponse.result);
     setActiveModelInputs(csvInputs);
   }
@@ -256,12 +258,14 @@ export default function App() {
         <div className={`${activeSourceTab}`}>
           <div className="nav-tabs">
             <button
-              onClick={() => setActiveSourceTab('sample-data')}
               className={`tab-btn ${activeSourceTab === 'sample-data' ? 'active' : ''}`}
+              onClick={() => setActiveSourceTab('sample-data')}
+              disabled={isRunning || isLoading}
             >
               Sample Data
             </button>
             <button
+              className={`tab-btn ${activeSourceTab === 'custom-data' ? 'active' : ''}`}
               onClick={() => {
                 if (customCsvData) {
                   setSelectedSampleData('custom');
@@ -269,7 +273,7 @@ export default function App() {
                 };
                 setActiveSourceTab('custom-data')
               }}
-              className={`tab-btn ${activeSourceTab === 'custom-data' ? 'active' : ''}`}
+              disabled={isRunning || isLoading}              
             >
               Upload Data
             </button>
@@ -361,7 +365,9 @@ export default function App() {
                   <ControlPanel
                     inputs={chartInputs}
                     timeHorizonCards={timeHorizonCards}
-                    modelType={selectedModel}
+                    selectedModel={selectedModel}
+                    activeModel={activeModel}
+                    modelFailures={modelFailures}
                     onModelChange={setSelectedModel}
                     onHistoryChange={setSelectedPastPeriods}
                     onForecastChange={handleForecastChange}
@@ -369,7 +375,7 @@ export default function App() {
                     isLoading={isLoading}
                   />
                 }
-                title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[selectedModel]} model)`}
+                title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[activeModel]} model)`}
                 chartData={chartData}
                 dataHistorical={"historical"}
                 dataForecast={"forecast"}
@@ -392,7 +398,9 @@ export default function App() {
                   <ControlPanel
                     inputs={chartInputs}
                     timeHorizonCards={timeHorizonCards}
-                    modelType={selectedModel}
+                    selectedModel={selectedModel}
+                    activeModel={activeModel}
+                    modelFailures={modelFailures}
                     onModelChange={setSelectedModel}
                     onHistoryChange={setSelectedPastPeriods}
                     onForecastChange={handleForecastChange}
@@ -400,7 +408,7 @@ export default function App() {
                     isLoading={isLoading}
                   />
                 }
-                modelType={selectedModel}
+                activeModel={activeModel}
                 chartData={overlayData}
                 nameCI={`${roundNumber((1-forecastParameters.alpha)*100, 1)}% CI`}
               />

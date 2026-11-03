@@ -1,6 +1,11 @@
-export type ThemePref = 'system' | 'light' | 'dark';
-
 export const MODEL_TYPES = ['ets', 'sarimax', 'theta'] as const;
+export const modelNameMap: Record<ModelType, string> = {
+  ets: 'ETS',
+  sarimax: 'SARIMAX',
+  theta: 'Theta'
+}
+
+export type ThemePref = 'system' | 'light' | 'dark';
 
 export type ModelType = typeof MODEL_TYPES[number];
 

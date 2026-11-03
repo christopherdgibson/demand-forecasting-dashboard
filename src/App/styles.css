@@ -200,10 +200,18 @@ body {
   cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
-.tab-btn:hover { color: var(--text-body); }
+
+.tab-btn:hover:not(:disabled) {
+  color: var(--text-body);
+}
 .tab-btn.active {
   color: var(--brand-strong);
   border-bottom-color: var(--brand);
+}
+
+.tab-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ---------- Headings ---------- */
@@ -299,7 +307,17 @@ body {
   border-radius: 8px;
 }
 
-.field-group { display: flex; flex-direction: column; gap: 6px; }
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field-note {
+  margin: 6px 0 0;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
 
 .label {
   display: flex;

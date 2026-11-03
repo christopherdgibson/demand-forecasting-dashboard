@@ -1,12 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 
 import '../App/styles.css';
+import { MODEL_TYPES, modelNameMap } from '../types';
 import type {CardInputs, ControlsBase, ForecastChartInputs, ForecastHorizonKeys, ModelType } from '../types';
 
 interface ControlsProps extends ControlsBase {
   inputs: ForecastChartInputs;
   timeHorizonCards: Record<ForecastHorizonKeys, CardInputs>;
-  modelType: ModelType;
+  selectedModel: ModelType;
+  activeModel: ModelType;
+  modelFailures: Partial<Record<ModelType, string>>;
   onModelChange: (updatedParams: ModelType) => void;
   onHistoryChange: (newPeriods: number) => void;
   onForecastChange: (updatedParams: ForecastChartInputs) => void;
@@ -141,7 +144,7 @@ function ControlCard<T extends keyof ForecastChartInputs>({card, inputKey, value
     );
 }
 
-export function ControlPanel({inputs, timeHorizonCards, modelType, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+export function ControlPanel({inputs, timeHorizonCards, selectedModel, activeModel, modelFailures, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
   const inputKeys: ForecastHorizonKeys[] = ['history', 'steps'];
 
   const alphaCard = {
@@ -151,6 +154,8 @@ export function ControlPanel({inputs, timeHorizonCards, modelType, onModelChange
     max: 1,
     step: 0.01
   }
+
+  const failedModels = Object.keys(modelFailures) as ModelType[];
 
   const handleInputsChange = <F extends keyof ForecastChartInputs> (
     field: F,
@@ -189,15 +194,29 @@ export function ControlPanel({inputs, timeHorizonCards, modelType, onModelChange
             <span className={'hint'}>Forecast Model</span>
           </label>
           <select
-            className={'input dropdown'}
-            value={modelType}
+            className="input dropdown"
+            value={activeModel}
             disabled={isRunning || isLoading}
+            aria-describedby={failedModels.length ? 'model-note' : undefined}
             onChange={(e) => onModelChange(e.target.value as ModelType)}
           >
-            <option value="ets">ETS</option>
-            <option value="sarimax">SARIMAX</option>
-            <option value="theta">Theta</option>
+            {MODEL_TYPES.map((m) => {
+              const failed = failedModels.includes(m);
+              return (
+                <option key={m} value={m} disabled={failed}
+                  title={failed && modelFailures ? modelFailures[m] : undefined}>
+                  {modelNameMap[m]}{failed ? ' (unavailable)' : ''}
+                </option>
+              );
+            })}
           </select>
+
+          {failedModels.length > 0 && (
+            <p id="model-note" className="field-note" role="status">
+              {failedModels.map((m) => `${modelNameMap[m]} couldn't be fitted to this data.`).join(' ')}
+              {activeModel !== selectedModel && ` Showing ${modelNameMap[activeModel]} instead.`}
+            </p>
+          )}
         </div>
 
         {/* Confidence Interval */}

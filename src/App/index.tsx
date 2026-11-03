@@ -46,10 +46,17 @@ const DEFAULT_CSV_INPUTS: CsvLoadInputs = {
   freq: 'MS'
 }
 
+const SAMPLE_NAME_MAP: Record<SampleDataKey, string> = {
+  RSXFSN: 'FRED Retail Data', // Advance Retail Sales: Retail Trade (NSA)
+  RSAFSNA: 'FRED Retail and Food Data', // Advance Retail Sales: Retail Trade and Food Services (NSA)
+  ECOMPCTNSA: 'FRED E-Commerce Data', // E-Commerce Retail Sales as a Percent of Total Sales (NSA)
+  custom: 'Custom Data'
+}
+
 const SAMPLE_FREQ_MAP: Record<SampleDataKey, string> = {
-  RSXFSN: 'MS', // Advance Retail Sales: Retail Trade (NSA)
-  RSAFSNA: 'MS', // Advance Retail Sales: Retail Trade and Food Services (NSA)
-  ECOMPCTNSA: 'QS', // E-Commerce Retail Sales as a Percent of Total Sales (NSA)
+  RSXFSN: 'MS',
+  RSAFSNA: 'MS',
+  ECOMPCTNSA: 'QS',
   custom: 'MS' // Default custom to monthly, consistent with CsvUploader
 }
 
@@ -125,7 +132,12 @@ export default function App() {
     [forecastParameters, selectedPastPeriods]
   );
 
-  const forecastCurrent = useMemo(
+  const activeFileName = useMemo(
+    () => selectedSampleData === 'custom' ? customCsvData.filename : `${SAMPLE_NAME_MAP[selectedSampleData]}: ${selectedSampleData}.csv`,
+    [activeModelInputs]
+  );
+
+  const isForecastCurrent = useMemo(
     () => shallowEqual(modelFitInputs, activeModelInputs),
     [modelFitInputs, activeModelInputs]
   );
@@ -307,10 +319,10 @@ export default function App() {
                       }                  
                     }}
                   >
-                    <option value='RSXFSN'>FRED Retail Data</option>
-                    <option value='RSAFSNA'>FRED Retail and Food Data</option>
-                    <option value='ECOMPCTNSA'>FRED E-Commerce Data</option>
-                    {customCsvData && <option value='custom'>Custom Data: {customCsvData.filename}</option>}
+                    <option value='RSXFSN'>{SAMPLE_NAME_MAP['RSXFSN']}</option>
+                    <option value='RSAFSNA'>{SAMPLE_NAME_MAP['RSAFSNA']}</option>
+                    <option value='ECOMPCTNSA'>{SAMPLE_NAME_MAP['ECOMPCTNSA']}</option>
+                    {customCsvData.filename.length > 0 && <option value='custom'>{SAMPLE_NAME_MAP['custom']}: {customCsvData.filename}</option>}
                   </select>
                 </div>
               </div>
@@ -319,13 +331,21 @@ export default function App() {
               <CsvUploader onDataChange={handleCustomDataChange}/>
             </div>
             <div className={'actions'}>
+              <div className={'field-group input-left'}>
+                  <label className={'label'}>
+                    <span>Current Forecast Dataset</span>
+                  </label>
+                  <div>
+                    <span><b>{activeFileName}</b></span>
+                  </div>
+              </div>
               <button
                 className={'primary-button'}
                 onClick={handleRun}
-                disabled={forecastCurrent || isRunning || isLoading}
+                disabled={isForecastCurrent || isRunning || isLoading}
               >
                 {isRunning ? 'Running Forecast...'
-                  : forecastCurrent ? 'Up to date!' : 'Run Forecast'}
+                  : isForecastCurrent ? 'Up to date!' : 'Run Forecast'}
               </button>
             </div>
           </div>

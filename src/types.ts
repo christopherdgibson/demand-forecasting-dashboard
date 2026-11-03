@@ -1,6 +1,8 @@
 export type ThemePref = 'system' | 'light' | 'dark';
 
-export type ModelType = 'ets' | 'sarimax' | 'theta';
+export const MODEL_TYPES = ['ets', 'sarimax', 'theta'] as const;
+
+export type ModelType = typeof MODEL_TYPES[number];
 
 export interface CsvLoadInputs {
   source: string;
@@ -76,11 +78,7 @@ export interface ModelMetrics {
   rmse: number | null;
 }
 
-export interface ForecastResults {
-  ets: Array<DemandProps>;
-  sarimax: Array<DemandProps>;
-  theta: Array<DemandProps>;
-}
+export type ForecastResults = Record<ModelType, Array<DemandProps>>;
 
 export interface ModelResults {
   data: Array<DemandProps>;
@@ -88,6 +86,11 @@ export interface ModelResults {
     ets: ModelMetrics;
     sarimax: ModelMetrics;
     theta: ModelMetrics;
+  },
+  failures: {
+    ets: string;
+    sarimax: string;
+    theta: string;
   }
 }
 

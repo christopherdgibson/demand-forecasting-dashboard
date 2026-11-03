@@ -96,6 +96,7 @@ def fit_models(source,
     STATE["freq"] = freq
     sp = get_seasonal_period(freq)
     seasonal = sp > 1
+    models, metrics, failures = {}, {}, {}
 
     # 1. Fit ETS Model
     try:
@@ -103,16 +104,16 @@ def fit_models(source,
             actuals, error='add', trend='add', 
             seasonal='add' if seasonal else None,
             seasonal_periods=sp if seasonal else None).fit()
-        STATE["models"]["ets"] = ets_fit
+        models["ets"] = ets_fit
         ets_resid = actuals - ets_fit.fittedvalues
-        STATE["metrics"]["ets"] = {
+        metrics["ets"] = {
             "aic": round(float(ets_fit.aic), 2),
             "bic": round(float(ets_fit.bic), 2),
             "mape": round(float(np.mean(np.abs(ets_resid / actuals))), 4),
             "rmse": round(float(np.sqrt(np.mean(ets_resid ** 2))), 2)
         }
     except Exception as e:
-        STATE["models"]["ets"] = None
+        failures["ets"] = f"{type(e).__name__}: {e}"
 
     # 2. Fit SARIMAX Model (Order: p=1, d=1, q=1, Seasonal: P=1, D=1, Q=1, s=12)
     try:
@@ -120,9 +121,9 @@ def fit_models(source,
             actuals, order=(1, 1, 1),
             seasonal_order=(1, 1, 1, sp) if seasonal else (0, 0, 0, 0)
         ).fit(disp=False)
-        STATE["models"]["sarimax"] = sarimax_fit
+        models["sarimax"] = sarimax_fit
         sarimax_resid = actuals - sarimax_fit.fittedvalues
-        STATE["metrics"]["sarimax"] = {
+        metrics["sarimax"] = {
             "aic": round(float(sarimax_fit.aic), 2),
             "bic": round(float(sarimax_fit.bic), 2),
             "mape": round(float(np.mean(np.abs(sarimax_resid / actuals))), 4),
@@ -130,16 +131,16 @@ def fit_models(source,
         }
 
     except Exception as e:
-        STATE["models"]["sarimax"] = None
+        failures["sarimax"] = f"{type(e).__name__}: {e}"
 
     # 3. Fit Theta Model
     try:
         theta_fit = ThetaModel(actuals, period=sp if seasonal else None, deseasonalize=seasonal).fit()
-        STATE["models"]["theta"] = theta_fit
+        models["theta"] = theta_fit
         
         # Extract metrics or residuals
         theta_rmse = float(np.sqrt(theta_fit.sigma2))
-        STATE["metrics"]["theta"] = {
+        metrics["theta"] = {
             "aic": "N/A", # Theta model uses alternative error criteria
             "bic": "N/A",
             "mape": "N/A",  # Omit or approximate since fitted values aren't stored
@@ -147,8 +148,13 @@ def fit_models(source,
         }
         
     except Exception as e:
+        failures["theta"] = f"{type(e).__name__}: {e}"
         print('Exception on Theta model:', e)
-        STATE["models"]["theta"] = None
+
+    if not models:
+        raise ValueError("No model could be fitted. " +"; ".join(f"{k}: {v}" for k, v in failures.items()))
+
+    STATE.update(models=models, metrics=metrics, last_date=pd.to_datetime(last_date), freq=freq)
 
     # Return historical series for initial render
     historical_data = [
@@ -173,7 +179,8 @@ def fit_models(source,
 
     return {
         "data": historical_data,
-        "metrics": STATE["metrics"]
+        "metrics": metrics,
+        "failures": failures
     }
 
 def generate_forecasts(forecast_steps=12, alpha=0.05):
@@ -278,3 +285,5 @@ def get_seasonal_offsets(freq: str, steps: int) -> Tuple[Any, Any]:
         return pd.DateOffset(weeks=1), pd.DateOffset(weeks=steps)
     elif freq.startswith('D'):
         return pd.DateOffset(days=1), pd.DateOffset(days=steps)
+    else:
+        raise ValueError(f"Unsupported frequency '{freq}'") from None

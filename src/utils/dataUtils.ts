@@ -1,3 +1,4 @@
+import { MODEL_TYPES } from '../types';
 import type { DemandProps, ForecastChartData, ForecastResults, ModelType, OverlayChartData, OverlayResults } from '../types';
 
 export function adjustHistory(history: Array<DemandProps>): Array<OverlayChartData> {
@@ -23,37 +24,35 @@ export function adjustHistory(history: Array<DemandProps>): Array<OverlayChartDa
   return formatRechartsData(adjusted) as OverlayChartData[];
 }
 
-export function reshapeRows(forecastMap: ForecastResults): OverlayChartData[] {
-  const etsForecast = forecastMap['ets'] || [];
-  const sarimaxForecast = forecastMap['sarimax'] || [];
-  const thetaForecast = forecastMap['theta'] || [];
-  const overlayRows = etsForecast.map((etsItem, index) => {
-    const date = etsItem.date;
-    const sarimaxItem = sarimaxForecast[index] || {};
-    const thetaItem = thetaForecast[index] || {};
+function emptyRow(date: string): OverlayResults {
+  const overlayRow = {
+    date,
+    historical: null,
+    forecast_ets: null,     ci_lower_ets: null,     ci_upper_ets: null,
+    forecast_sarimax: null, ci_lower_sarimax: null, ci_upper_sarimax: null,
+    forecast_theta: null,   ci_lower_theta: null,   ci_upper_theta: null,
+  };
 
-    return {
-      date,
-      historical: null, // No historical value in forecast horizon
+  return overlayRow;
+}
 
-      // ETS
-      forecast_ets: etsItem.forecast,
-      ci_lower_ets: etsItem.ci_lower,
-      ci_upper_ets: etsItem.ci_upper,
+export function reshapeRows(forecastMap: Partial<ForecastResults>): OverlayChartData[] {
+  const rows = new Map<string, OverlayResults>();
 
-      // SARIMAX
-      forecast_sarimax: sarimaxItem.forecast ?? null,
-      ci_lower_sarimax: sarimaxItem.ci_lower ?? null,
-      ci_upper_sarimax: sarimaxItem.ci_upper ?? null,
+  for (const model of MODEL_TYPES) {
+    for (const item of forecastMap[model] ?? []) {
+      const row = rows.get(item.date) ?? emptyRow(item.date);
+      Object.assign(row, {
+        [`forecast_${model}`]: item.forecast,
+        [`ci_lower_${model}`]: item.ci_lower,
+        [`ci_upper_${model}`]: item.ci_upper,
+      });
+      rows.set(item.date, row);
+    }
+  }
 
-      // Theta
-      forecast_theta: thetaItem.forecast ?? null,
-      ci_lower_theta: thetaItem.ci_lower ?? null,
-      ci_upper_theta: thetaItem.ci_upper ?? null,
-    };
-  });
-
-  return formatRechartsData(overlayRows);
+  const sorted = [...rows.values()].sort((a, b) => a.date.localeCompare(b.date));
+  return formatRechartsData(sorted);
 }
 
 function formatRechartsData(data: OverlayResults[]): OverlayChartData[] {

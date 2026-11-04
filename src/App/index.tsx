@@ -352,21 +352,25 @@ export default function App() {
           </div>
         </div>
 
-        <h2 className={'section-heading'}>Model Parameters</h2>
-        <div className={'chart-card'}>
-          <ControlPanel
-            inputs={chartInputs}
-            timeHorizonCards={timeHorizonCards}
-            selectedModel={selectedModel}
-            activeModel={activeModel}
-            modelFailures={modelFailures}
-            onModelChange={setSelectedModel}
-            onHistoryChange={setSelectedPastPeriods}
-            onForecastChange={handleForecastChange}
-            isRunning={isRunning}
-            isLoading={isLoading}
-          />
-        </div>
+        {chartData && (
+          <>
+            <h2 className={'section-heading'}>Model Parameters</h2>
+            <div className={'chart-card'}>
+              <ControlPanel
+                inputs={chartInputs}
+                timeHorizonCards={timeHorizonCards}
+                selectedModel={selectedModel}
+                activeModel={activeModel}
+                modelFailures={modelFailures}
+                onModelChange={setSelectedModel}
+                onHistoryChange={setSelectedPastPeriods}
+                onForecastChange={handleForecastChange}
+                isRunning={isRunning}
+                isLoading={isLoading}
+              />
+            </div>
+          </>
+        )}
         
         <Metrics metrics={metrics} />
         

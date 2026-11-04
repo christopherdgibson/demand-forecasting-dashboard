@@ -1,10 +1,11 @@
-import { ChangeEvent, useState } from "react";
+import { ChangeEvent, useMemo } from "react";
 
-import type { CsvCustomInputs, CsvLoadInputs } from "../types";
+import type { CsvCustomInputs, ErrorMessage } from "../types";
 
 import '../App/styles.css';
 
 interface CsvUploaderProps {
+  csvInputs: CsvCustomInputs;
   onDataChange: ({
     filename,
     source,
@@ -13,54 +14,67 @@ interface CsvUploaderProps {
     targetCol,
     freq,
   }: CsvCustomInputs) => void;
+  onError: (error: ErrorMessage) => void;
 }
 
-export function CsvUploader({ onDataChange }: CsvUploaderProps) {
-  const [columns, setColumns] = useState<string[]>([]);
-  const [customInputs, setCustomInputs] = useState<CsvCustomInputs>({filename: '', source: '', isString: true, dateCol: '', targetCol: '', freq: 'MS'});
+const headersError: ErrorMessage =  {
+  success: false,
+  header: 'Parse failure: Headers',
+  type: 'parse',
+  message: 'Could not read header names from uploaded file. Please check contents or try another file.',
+};
 
+function parseHeaders(text: string): string[] {
+  const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
+  if (!firstLine.trim()) return [];
+
+  const delimiter = [',', ';', '\t'].reduce(
+    (best, d) => (firstLine.split(d).length > firstLine.split(best).length ? d : best),
+    ','
+  );
+
+  return firstLine.split(delimiter).map((h, i) => {
+    const name = h.trim().replace(/^["']|["']$/g, '');
+    return name || `Unnamed: ${i}`;   // matches how pandas names blank headers
+  });
+}
+
+export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderProps) {
+  const source = csvInputs?.source ?? '';
+  const columns = useMemo(() => parseHeaders(source), [source]);
 
   // Read file and extract headers on selection
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+  const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const input = e.target;
+    const file = input.files?.[0];
     if (!file) return;
 
-    let inputs: CsvCustomInputs;
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
+    const text = (await file.text()).replace(/^\uFEFF/, '');   // strip Excel's BOM
+    const headers = parseHeaders(text);
+    if (headers.length === 0) {
+      onError(headersError);     
+      return;
+    }
 
-      inputs = {...inputs, filename: file.name, source: text, isString: true, freq: 'MS'};
-
-      // Extract the first line for headers
-      const firstLine = text.split(/\r?\n/)[0];
-      const headers = firstLine
-        .split(",")
-        .map((h) => h.trim().replace(/^["']|["']$/g, ""));
-
-      setColumns(headers);
-      if (headers.length > 0) {
-        inputs = {...inputs, dateCol: headers[0], targetCol: headers[1] || headers[0]};
-      }
-
-      updateInputs(inputs);
-    };
-    reader.readAsText(file);
+    onDataChange({
+      filename: file.name,
+      source: text,
+      isString: true,
+      dateCol: headers[0],
+      targetCol: headers[1] ?? headers[0],
+      freq: 'MS',
+    });
+    
+    input.value = '';   // lets the user re-select the same file after editing it
   };
 
-  const handleInputChange = <F extends keyof CsvLoadInputs> (
-      field: F,
-      value: CsvLoadInputs[F]
-    ) => {
-    const inputs = {...customInputs, [field]: value};
-    updateInputs(inputs);
-  };
-
-  function updateInputs(inputs: CsvCustomInputs) {
-    setCustomInputs(inputs);
+  const handleInputChange = <F extends keyof CsvCustomInputs> (
+    field: F,
+    value: CsvCustomInputs[F]
+  ) => {
+    const inputs = {...csvInputs, [field]: value};
     onDataChange(inputs);
-  }
+  };
 
   return (
     <>
@@ -78,7 +92,7 @@ export function CsvUploader({ onDataChange }: CsvUploaderProps) {
           <input id="csv-upload" type="file" accept=".csv" onChange={handleFileChange} />
           </div>
           <div className={'custom-csv-grid'}>
-            <span>{customInputs.filename}</span>
+            <span>{csvInputs?.filename}</span>
           </div>
         </div>
 
@@ -91,7 +105,7 @@ export function CsvUploader({ onDataChange }: CsvUploaderProps) {
               </label>
               <select
                 className={'input dropdown'}
-                value={customInputs.dateCol}
+                value={csvInputs?.dateCol}
                 onChange={(e) => handleInputChange('dateCol', e.target.value)}
               >
                 {columns.map((col) => (
@@ -109,7 +123,7 @@ export function CsvUploader({ onDataChange }: CsvUploaderProps) {
               </label>
               <select
                 className={'input dropdown'}
-                value={customInputs.targetCol}
+                value={csvInputs?.targetCol}
                 onChange={(e) => handleInputChange('targetCol', e.target.value)}
               >
                 {columns.map((col) => (
@@ -126,7 +140,7 @@ export function CsvUploader({ onDataChange }: CsvUploaderProps) {
               </label>
               <select
                 className={'input dropdown'}
-                value={customInputs.freq}
+                value={csvInputs?.freq}
                 onChange={(e) => handleInputChange('freq', e.target.value)}
               >
                 <option key={'Annual'} value={'YS'}>Annual</option>

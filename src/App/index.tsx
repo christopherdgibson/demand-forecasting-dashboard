@@ -82,7 +82,7 @@ export default function App() {
 
   // Input states
   const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>(DEFAULT_CSV_INPUTS['targetCol'] as SampleDataKey);
-  const [customCsvData, setCustomCsvData] = useState<CsvCustomInputs | null>(null);
+  const [customCsvData, setCustomCsvData] = useState<CsvCustomInputs>({filename: '', source: '', isString: true, dateCol: '', targetCol: '', freq: 'MS'});
   const [modelFitInputs, setModelFitInputs] = useState<CsvLoadInputs>(DEFAULT_CSV_INPUTS);
   const [activeModelInputs, setActiveModelInputs] = useState<CsvLoadInputs | null>(null);
 
@@ -328,7 +328,7 @@ export default function App() {
               </div>
             </div>
             <div className='active-custom-data'>                  
-              <CsvUploader onDataChange={handleCustomDataChange}/>
+              <CsvUploader csvInputs={customCsvData} onDataChange={handleCustomDataChange} onError={handleErrorResponse}/>
             </div>
             <div className={'actions'}>
               <div className={'field-group input-left'}>

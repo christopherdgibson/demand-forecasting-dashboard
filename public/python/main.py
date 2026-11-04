@@ -35,7 +35,7 @@ def load_and_prepare_dataset(
     """
     # 1. Ingestion (File path vs. uploaded CSV string)
     if is_string:
-        df = pd.read_csv(io.StringIO(source))
+        df = pd.read_csv(io.StringIO(source), sep=None, engine='python')
     else:
         df = pd.read_csv(source)
     

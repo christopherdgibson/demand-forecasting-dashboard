@@ -82,7 +82,7 @@ export default function App() {
 
   // Input states
   const [selectedSampleData, setSelectedSampleData] = useState<SampleDataKey>(DEFAULT_CSV_INPUTS['targetCol'] as SampleDataKey);
-  const [customCsvData, setCustomCsvData] = useState<CsvCustomInputs>({filename: '', source: '', isString: true, dateCol: '', targetCol: '', freq: 'MS'});
+  const [customCsvData, setCustomCsvData] = useState<CsvCustomInputs>({filename: '', source: '', isString: true, delimiter: ',', dateCol: '', targetCol: '', freq: 'MS'});
   const [modelFitInputs, setModelFitInputs] = useState<CsvLoadInputs>(DEFAULT_CSV_INPUTS);
   const [activeModelInputs, setActiveModelInputs] = useState<CsvLoadInputs | null>(null);
 
@@ -217,15 +217,15 @@ export default function App() {
   };
 
   // Set inputs and store data for recall in data dropdown
-  const handleCustomDataChange = ({filename, source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvCustomInputs) => {
-    setCustomModelInputs({source, isString, dateCol, targetCol, freq});
-    setCustomCsvData({filename, source, isString, dateCol, targetCol, freq});
+  const handleCustomDataChange = ({filename, source, isString = true, delimiter, dateCol, targetCol, freq = 'MS'}: CsvCustomInputs) => {
+    setCustomModelInputs({source, isString, delimiter, dateCol, targetCol, freq});
+    setCustomCsvData({filename, source, isString, delimiter, dateCol, targetCol, freq});
     setSelectedSampleData('custom');
   };
 
   // Drops custom name to set model fit inputs
-  const setCustomModelInputs = ({source, isString = true, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
-    setModelFitInputs({source, isString, dateCol, targetCol, freq});
+  const setCustomModelInputs = ({source, isString = true, delimiter, dateCol, targetCol, freq = 'MS'}: CsvLoadInputs) => {
+    setModelFitInputs({source, isString, delimiter, dateCol, targetCol, freq});
   }
 
   function handleErrorResponse(error: ErrorMessage) {

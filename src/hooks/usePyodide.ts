@@ -122,10 +122,10 @@ export function usePyodide() {
 
   // 3. Public API: Initial Model Fit
   const fitModels = useCallback(
-    async ({source, isString = false, dateCol, targetCol, freq}: CsvLoadInputs): Promise<SuccessResult<ModelResults> | ErrorMessage> => {
+    async ({source, isString = false, delimiter, dateCol, targetCol, freq}: CsvLoadInputs): Promise<SuccessResult<ModelResults> | ErrorMessage> => {
       const historical = await callPyFunction<ModelResults>({
         fnName: 'fit_models',
-        args: [source, isString, dateCol, targetCol, freq],
+        args: [source, isString, delimiter, dateCol, targetCol, freq],
       });
 
       return historical;

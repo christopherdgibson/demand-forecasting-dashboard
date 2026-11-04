@@ -12,6 +12,7 @@ export type ModelType = typeof MODEL_TYPES[number];
 export interface CsvLoadInputs {
   source: string;
   isString?: boolean;
+  delimiter?: string;
   dateCol: string;
   targetCol: string;
   freq: string

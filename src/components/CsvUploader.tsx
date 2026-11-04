@@ -24,24 +24,26 @@ const headersError: ErrorMessage =  {
   message: 'Could not read header names from uploaded file. Please check contents or try another file.',
 };
 
-function parseHeaders(text: string): string[] {
+function parseHeaders(text: string): { headers: string[]; delimiter: string } {
   const firstLine = text.split(/\r?\n/, 1)[0] ?? '';
-  if (!firstLine.trim()) return [];
+  if (!firstLine.trim()) return { headers: [], delimiter: ',' };
 
   const delimiter = [',', ';', '\t'].reduce(
     (best, d) => (firstLine.split(d).length > firstLine.split(best).length ? d : best),
     ','
   );
 
-  return firstLine.split(delimiter).map((h, i) => {
+  const headers = firstLine.split(delimiter).map((h, i) => {
     const name = h.trim().replace(/^["']|["']$/g, '');
     return name || `Unnamed: ${i}`;   // matches how pandas names blank headers
   });
+
+  return { headers, delimiter };
 }
 
 export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderProps) {
   const source = csvInputs?.source ?? '';
-  const columns = useMemo(() => parseHeaders(source), [source]);
+  const columns = useMemo(() => parseHeaders(source).headers, [source]);
 
   // Read file and extract headers on selection
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -50,7 +52,8 @@ export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderPro
     if (!file) return;
 
     const text = (await file.text()).replace(/^\uFEFF/, '');   // strip Excel's BOM
-    const headers = parseHeaders(text);
+    const parseResult = parseHeaders(text);
+    const headers = parseResult.headers;
     if (headers.length === 0) {
       onError(headersError);     
       return;
@@ -60,6 +63,7 @@ export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderPro
       filename: file.name,
       source: text,
       isString: true,
+      delimiter: parseResult.delimiter,
       dateCol: headers[0],
       targetCol: headers[1] ?? headers[0],
       freq: 'MS',

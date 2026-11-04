@@ -26,6 +26,7 @@ def series_to_frontend_records(series: pd.Series) -> list[dict]:
 def load_and_prepare_dataset(
     source, 
     is_string: bool = False, 
+    delimiter: str = ',',
     date_col: str = 'observation_date', 
     target_col: str = 'RSXFSN', 
     freq: str = 'MS'):
@@ -35,7 +36,7 @@ def load_and_prepare_dataset(
     """
     # 1. Ingestion (File path vs. uploaded CSV string)
     if is_string:
-        df = pd.read_csv(io.StringIO(source), sep=None, engine='python')
+        df = pd.read_csv(io.StringIO(source), sep=delimiter, engine='python')
     else:
         df = pd.read_csv(source)
     
@@ -81,11 +82,12 @@ def load_and_prepare_dataset(
 # url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
 def fit_models(source, 
     is_string: bool = False, 
+    delimiter: str = ',',
     date_col: str = 'observation_date', 
     target_col: str = 'RSXFSN', 
     freq: str = 'MS'):
     """Runs data loading and model fitting (Expensive step — run once)."""
-    df = load_and_prepare_dataset(source, is_string, date_col, target_col, freq)
+    df = load_and_prepare_dataset(source, is_string, delimiter, date_col, target_col, freq)
 
     actuals = df['historical']
 

@@ -154,6 +154,7 @@ export default function App() {
   );
 
   const metrics = metricsMap[activeModel] ?? null;
+  const inputsValid = modelFitInputs.dateCol !== modelFitInputs.targetCol;
 
   async function runForecast({ csvInputs, steps, alpha }: ForecastProps): Promise<void> {
     const modelResponse = await fitModels(csvInputs);
@@ -342,7 +343,7 @@ export default function App() {
               <button
                 className={'primary-button'}
                 onClick={handleRun}
-                disabled={isForecastCurrent || isRunning || isLoading}
+                disabled={isForecastCurrent || !inputsValid || isRunning || isLoading}
               >
                 {isRunning ? 'Running Forecast...'
                   : isForecastCurrent ? 'Up to date!' : 'Run Forecast'}

@@ -145,6 +145,11 @@ body {
 .loading-text  { color: var(--text-muted); font-size: 0.95rem; margin: 0; }
 
 /* ---------- Metrics ---------- */
+
+.metrics-container {
+  border-top: 1px solid var(--border-soft);
+}
+
 .metrics-grid {
   padding: 24px;
   margin: 0 auto 20px;
@@ -226,7 +231,7 @@ body {
 .section-heading    { font-size: 0.95rem; text-transform: uppercase; }
 .section-subheading { font-size: 0.9rem; }
 
-/* ---------- Collapsible sections (unchanged) ---------- */
+/* ---------- Collapsible sections ---------- */
 .active-sample-data, .active-custom-data,
 .active-forecast, .active-ci-overlay {
   opacity: 0;
@@ -234,6 +239,7 @@ body {
   overflow: clip;
   h2 { margin: 0; }
 }
+
 .sample-data .active-sample-data,
 .custom-data .active-custom-data,
 .forecast .active-forecast,
@@ -243,6 +249,10 @@ body {
   opacity: 1;
   max-height: 100%;
   h2 { margin: unset; }
+}
+
+.sample-data, .custom-data {
+  border-bottom: 1px solid var(--border-soft);
 }
 
 .dropdown-arrow {

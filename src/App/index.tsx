@@ -351,6 +351,22 @@ export default function App() {
             </div>
           </div>
         </div>
+
+        <h2 className={'section-heading'}>Model Parameters</h2>
+        <div className={'chart-card'}>
+          <ControlPanel
+            inputs={chartInputs}
+            timeHorizonCards={timeHorizonCards}
+            selectedModel={selectedModel}
+            activeModel={activeModel}
+            modelFailures={modelFailures}
+            onModelChange={setSelectedModel}
+            onHistoryChange={setSelectedPastPeriods}
+            onForecastChange={handleForecastChange}
+            isRunning={isRunning}
+            isLoading={isLoading}
+          />
+        </div>
         
         <Metrics metrics={metrics} />
         
@@ -382,20 +398,6 @@ export default function App() {
             <h2 className="section-heading">Demand Forecast</h2>
             {chartData && (
               <ForecastChart
-                controlPanel={
-                  <ControlPanel
-                    inputs={chartInputs}
-                    timeHorizonCards={timeHorizonCards}
-                    selectedModel={selectedModel}
-                    activeModel={activeModel}
-                    modelFailures={modelFailures}
-                    onModelChange={setSelectedModel}
-                    onHistoryChange={setSelectedPastPeriods}
-                    onForecastChange={handleForecastChange}
-                    isRunning={isRunning}
-                    isLoading={isLoading}
-                  />
-                }
                 title={`Demand Trajectory & 12-Month Forecast (${modelNameMap[activeModel]} model)`}
                 chartData={chartData}
                 dataHistorical={"historical"}
@@ -415,20 +417,6 @@ export default function App() {
             <h2 className="section-heading">Forecast Overlay</h2>             
             {overlayData && (
               <ForecastOverlayChart
-                controlPanel={
-                  <ControlPanel
-                    inputs={chartInputs}
-                    timeHorizonCards={timeHorizonCards}
-                    selectedModel={selectedModel}
-                    activeModel={activeModel}
-                    modelFailures={modelFailures}
-                    onModelChange={setSelectedModel}
-                    onHistoryChange={setSelectedPastPeriods}
-                    onForecastChange={handleForecastChange}
-                    isRunning={isRunning}
-                    isLoading={isLoading}
-                  />
-                }
                 activeModel={activeModel}
                 chartData={overlayData}
                 nameCI={`${roundNumber((1-forecastParameters.alpha)*100, 1)}% CI`}

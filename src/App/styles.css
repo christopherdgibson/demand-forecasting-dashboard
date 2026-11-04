@@ -317,6 +317,10 @@ body {
   margin: 6px 0 0;
   font-size: 0.78rem;
   color: var(--text-muted);
+
+  &.warning {
+    color: var(--danger);
+  }
 }
 
 .label {
@@ -459,7 +463,7 @@ input[type="range"] { accent-color: var(--brand); }
   background: var(--surface-2);
   border: 1px solid var(--border-soft);
   border-radius: 8px;
-  row-gap: 30px;
+  row-gap: 15px;
   column-gap: 20px;
 }
 

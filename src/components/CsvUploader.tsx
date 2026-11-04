@@ -33,9 +33,17 @@ function parseHeaders(text: string): { headers: string[]; delimiter: string } {
     ','
   );
 
-  const headers = firstLine.split(delimiter).map((h, i) => {
+  const names = firstLine.split(delimiter).map((h, i) => {
     const name = h.trim().replace(/^["']|["']$/g, '');
     return name || `Unnamed: ${i}`;   // matches how pandas names blank headers
+  });
+
+  // Rename duplicate headers
+  const seen = new Map<string, number>();
+  const headers = names.map((name) => {
+    const n = seen.get(name) ?? 0;
+    seen.set(name, n + 1);
+    return n === 0 ? name : `${name}.${n}`;
   });
 
   return { headers, delimiter };
@@ -44,6 +52,7 @@ function parseHeaders(text: string): { headers: string[]; delimiter: string } {
 export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderProps) {
   const source = csvInputs?.source ?? '';
   const columns = useMemo(() => parseHeaders(source).headers, [source]);
+  const sameColumn = columns.length > 0 && csvInputs.dateCol === csvInputs.targetCol;
 
   // Read file and extract headers on selection
   const handleFileChange = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -101,60 +110,69 @@ export function CsvUploader({csvInputs,  onDataChange, onError }: CsvUploaderPro
         </div>
 
         {columns.length > 0 && (
-          <div className={'csv-inputs-grid'}>
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Date Column:
-                <span className={'hint'}>Dates</span>
-              </label>
-              <select
-                className={'input dropdown'}
-                value={csvInputs?.dateCol}
-                onChange={(e) => handleInputChange('dateCol', e.target.value)}
-              >
-                {columns.map((col) => (
-                  <option key={col} value={col}>
-                    {col}
-                  </option>
-                ))}
-              </select>
+          <>
+            <div className="field-note warning" role="status">
+              {sameColumn && (
+                columns.length === 1
+                  ? 'Only one column found. A date column and a demand column are needed. Check the file’s delimiter.'
+                  : 'The date and demand columns must be different.')
+              }
             </div>
+            <div className={'csv-inputs-grid'}>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Date Column:
+                  <span className={'hint'}>Dates</span>
+                </label>
+                <select
+                  className={'input dropdown'}
+                  value={csvInputs?.dateCol}
+                  onChange={(e) => handleInputChange('dateCol', e.target.value)}
+                >
+                  {columns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Demand / Target Column:
-                <span className={'hint'}>Data Values</span>
-              </label>
-              <select
-                className={'input dropdown'}
-                value={csvInputs?.targetCol}
-                onChange={(e) => handleInputChange('targetCol', e.target.value)}
-              >
-                {columns.map((col) => (
-                  <option key={col} value={col}>
-                    {col}
-                  </option>
-                ))}
-              </select>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Demand / Target Column:
+                  <span className={'hint'}>Data Values</span>
+                </label>
+                <select
+                  className={'input dropdown'}
+                  value={csvInputs?.targetCol}
+                  onChange={(e) => handleInputChange('targetCol', e.target.value)}
+                >
+                  {columns.map((col) => (
+                    <option key={col} value={col}>
+                      {col}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className={'field-group'}>
+                <label className={'label'}>
+                  Frequency:
+                  <span className={'hint'}>Periodicity</span>
+                </label>
+                <select
+                  className={'input dropdown'}
+                  value={csvInputs?.freq}
+                  onChange={(e) => handleInputChange('freq', e.target.value)}
+                >
+                  <option key={'Annual'} value={'YS'}>Annual</option>
+                  <option key={'Quarterly'} value={'QS'}>Quarterly</option>
+                  <option key={'Monthly'} value={'MS'}>Monthly</option>
+                  <option key={'Weekly'} value={'W'}>Weekly</option>
+                  <option key={'Daily'} value={'D'}>Daily</option>
+                </select>
+              </div>
             </div>
-            <div className={'field-group'}>
-              <label className={'label'}>
-                Frequency:
-                <span className={'hint'}>Periodicity</span>
-              </label>
-              <select
-                className={'input dropdown'}
-                value={csvInputs?.freq}
-                onChange={(e) => handleInputChange('freq', e.target.value)}
-              >
-                <option key={'Annual'} value={'YS'}>Annual</option>
-                <option key={'Quarterly'} value={'QS'}>Quarterly</option>
-                <option key={'Monthly'} value={'MS'}>Monthly</option>
-                <option key={'Weekly'} value={'W'}>Weekly</option>
-                <option key={'Daily'} value={'D'}>Daily</option>
-              </select>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </>

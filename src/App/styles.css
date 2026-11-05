@@ -228,8 +228,14 @@ body {
   padding-bottom: 0.25rem;
   letter-spacing: 0.025em;
 }
-.section-heading    { font-size: 0.95rem; text-transform: uppercase; }
-.section-subheading { font-size: 0.9rem; }
+.section-heading    {
+  font-size: 0.95rem;
+  text-transform: uppercase;
+}
+
+.section-subheading {
+  font-size: 0.9rem;
+}
 
 /* ---------- Collapsible sections ---------- */
 .active-sample-data, .active-custom-data,

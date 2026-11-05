@@ -352,6 +352,8 @@ export default function App() {
           </div>
         </div>
 
+        <Metrics metrics={metrics} />
+
         {chartData && (
           <>
             <h2 className={'section-heading'}>Model Parameters</h2>
@@ -371,8 +373,6 @@ export default function App() {
             </div>
           </>
         )}
-        
-        <Metrics metrics={metrics} />
         
         {/* Active Chart Tab Navigation */}
         <div className={`${activeChartTab}`}>

@@ -9,7 +9,8 @@ type CallPyFunction = <T,>(props: PyFunctionProps) => Promise<SuccessResult<T> |
 
 export function usePyodide() {
   const [pyodide, setPyodide] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [initError, setInitError] = useState<ErrorMessage | null>(null);
+  const isLoading = pyodide === null && initError === null; 
 
   const isInitializingRef = useRef(false);
   const base = import.meta.env.BASE_URL;
@@ -27,7 +28,7 @@ export function usePyodide() {
 
         // Fetch main.py
         const [mainSrc] = await Promise.all([
-          fetch(`${base}python/main.py`).then((res) => res.text()),
+          fetchText(`${base}python/main.py`),
         ]);
 
         // Write support modules to the virtual file system
@@ -35,9 +36,9 @@ export function usePyodide() {
 
         // Fetch CSV file and write it to MEMFS
         const [csvRSXFSN, csvRSAFSNA, csvECOMPCTNSA] = await Promise.all([
-          fetch(`${base}data/inputs/RSXFSN.csv`).then((res) => res.text()),
-          fetch(`${base}data/inputs/RSAFSNA.csv`).then((res) => res.text()),
-          fetch(`${base}data/inputs/ECOMPCTNSA.csv`).then((res) => res.text()),
+          fetchText(`${base}data/inputs/RSXFSN.csv`),
+          fetchText(`${base}data/inputs/RSAFSNA.csv`),
+          fetchText(`${base}data/inputs/ECOMPCTNSA.csv`),
         ]);
 
         // Write files into Pyodide's virtual filesystem root as 'fileName.csv'
@@ -51,9 +52,13 @@ export function usePyodide() {
         setPyodide(py);
       } catch (err) {
         console.error('Pyodide initialization failed:', err);
-      } finally {
-        setIsLoading(false);
-      }
+        setInitError({
+          success: false,
+          header: 'Python failed to load',
+          type: 'init',
+          message: err instanceof Error ? err.message : String(err),
+        });
+      } 
     }
 
     initPyodide();
@@ -142,7 +147,16 @@ export function usePyodide() {
     }, [callPyFunction]
   );
 
-  return { isLoading, fitModels, updateForecasts };
+  return { isLoading, initError, fitModels, updateForecasts };
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url);
+  const type = res.headers.get('content-type') ?? '';
+  if (!res.ok || type.includes('text/html')) {
+    throw new Error(`Could not load ${url} (status ${res.status})`);
+  }
+  return res.text();
 }
 
 function parsePythonError(fullTrace: string): { pyType: string; message: string } {

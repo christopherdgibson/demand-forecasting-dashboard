@@ -339,6 +339,10 @@ body {
   }
 }
 
+.actions ~ .field-note {
+  margin-top: 20px;
+}
+
 .label {
   display: flex;
   justify-content: space-between;

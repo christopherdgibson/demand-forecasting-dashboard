@@ -77,7 +77,7 @@ export default function App() {
   // Hooks
   const {activeTheme, setActiveTheme} = useTheme();
   const {hues, setHues, activePreset} = useHue();
-  const {isLoading, fitModels, updateForecasts} = usePyodide();
+  const {isLoading, initError, fitModels, updateForecasts} = usePyodide();
   // const { isLoading, fitModels, updateForecasts } = usePyodideWorker();
 
   // Input states
@@ -117,8 +117,12 @@ export default function App() {
   useEffect(() => {
     if (isLoading || hasFetchedRef.current) return;
     hasFetchedRef.current = true;
+    if (initError) {
+      handleErrorResponse(initError);
+      return;
+    }
     handleRun();
-  }, [isLoading]);
+  }, [isLoading, initError]);
 
   const overlayData = useMemo(
     () => fullAdjustedHistory && forecastData
@@ -154,7 +158,7 @@ export default function App() {
   );
 
   const metrics = metricsMap[activeModel] ?? null;
-  const inputsValid = modelFitInputs.dateCol !== modelFitInputs.targetCol;
+  const inputsValid = modelFitInputs.dateCol !== modelFitInputs.targetCol && modelFitInputs.source !== '';
 
   async function runForecast({ csvInputs, steps, alpha }: ForecastProps): Promise<void> {
     const modelResponse = await fitModels(csvInputs);
@@ -179,6 +183,7 @@ export default function App() {
 
   // Update chart input changes moves (No refitting)
   const handleForecastChange = async ({ steps, alpha }: ForecastParameters) => {
+    if (activeModelInputs === null) return; // nothing fitted yet
     setForecastParameters({...forecastParameters, steps, alpha});
 
     const forecastResponse = await updateForecasts({steps, alpha});
@@ -196,6 +201,7 @@ export default function App() {
   }
 
   const handleRun = async () => {
+    if (!inputsValid) return; 
     setIsRunning(true);
     await nextPaint(); // lets React commit and the browser paint (unneeded if move to worker?)
     try {
@@ -349,6 +355,7 @@ export default function App() {
                   : isForecastCurrent ? 'Up to date!' : 'Run Forecast'}
               </button>
             </div>
+            {initError && <div className="field-note warning" role="status">Python failed to load. Reload the page to try again.</div>}
           </div>
         </div>
 

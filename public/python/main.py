@@ -94,8 +94,6 @@ def fit_models(source,
     last_value = float(actuals.iloc[-1])
     last_date = str(df.index[-1].date())
 
-    STATE["last_date"] = pd.to_datetime(last_date)
-    STATE["freq"] = freq
     sp = get_seasonal_period(freq)
     seasonal = sp > 1
     models, metrics, failures = {}, {}, {}
@@ -117,7 +115,7 @@ def fit_models(source,
     except Exception as e:
         failures["ets"] = f"{type(e).__name__}: {e}"
 
-    # 2. Fit SARIMAX Model (Order: p=1, d=1, q=1, Seasonal: P=1, D=1, Q=1, s=12)
+    # 2. Fit SARIMAX Model (Order: p=1, d=1, q=1, Seasonal: P=1, D=1, Q=1, s=sp)
     try:
         sarimax_fit = SARIMAX(
             actuals, order=(1, 1, 1),
@@ -151,7 +149,6 @@ def fit_models(source,
         
     except Exception as e:
         failures["theta"] = f"{type(e).__name__}: {e}"
-        print('Exception on Theta model:', e)
 
     if not models:
         raise ValueError("No model could be fitted. " +"; ".join(f"{k}: {v}" for k, v in failures.items()))
@@ -186,59 +183,55 @@ def fit_models(source,
     }
 
 def generate_forecasts(forecast_steps=12, alpha=0.05):
-    """Generates forecasts and 95% confidence intervals (alpha=0.05)."""
-    if STATE["models"] is None:
+    """Generates forecasts and confidence intervals for every fitted model."""
+    if not STATE["models"]:
         raise ValueError("Model must be fitted before calling generate_forecasts.")
     
     steps = int(forecast_steps)
-    last_date = STATE["last_date"]
-    freq = STATE["freq"]
+    if steps < 1:
+        raise ValueError("Forecast steps must be at least 1.")
+    if not 0 < alpha < 1:
+        raise ValueError("Alpha must be between 0 and 1.")
 
-    offset_start, offset_end = get_seasonal_offsets(freq, steps)
+    last_date = STATE["last_date"]
+    offset_start, offset_end = get_seasonal_offsets(STATE["freq"], steps)
     forecast_start = last_date + offset_start
     forecast_end = last_date + offset_end
     
-    forecast_maps = {}
+    forecasts, failures = {}, {}
 
-    for modelType, model in STATE["models"].items():
-        if model is None:
-            continue
+    for model_type, model in STATE["models"].items():
+        try:
+            if model_type == 'ets':
+                mean_series, ci_lower, ci_upper = get_ets_forecasts(model, forecast_start, forecast_end, alpha)
+            elif model_type == 'sarimax':
+                mean_series, ci_lower, ci_upper = get_sarimax_forecasts(model, forecast_start, forecast_end, alpha)
+            elif model_type == 'theta':
+                mean_series, ci_lower, ci_upper = get_theta_forecasts(model, steps, alpha)
+            else:
+                continue
+                # raise ValueError(f"Unsupported demand model type: '{model_type}'")
 
-        # Get prediction results object and 
-        #   extract confidence intervals (default alpha=0.05 for 95% CI)
-        if modelType == 'ets':
-            (mean_series, ci_lower, ci_upper) = get_ets_forecasts(model, forecast_start, forecast_end, alpha)
+            forecasts[model_type] = [
+                {
+                    "date": str(mean_series.index[i].date()),
+                    "historical": None,
+                    "forecast": round(float(mean_series.iloc[i]), 2),
+                    "ci_lower": round(float(ci_lower.iloc[i]), 2),
+                    "ci_upper": round(float(ci_upper.iloc[i]), 2),
+                }
+                for i in range(steps)
+            ]
+        except Exception as e:
+            failures[model_type] = f"{type(e).__name__}: {e}"
 
-        elif modelType == 'sarimax':
-            (mean_series, ci_lower, ci_upper) = get_sarimax_forecasts(model, forecast_start, forecast_end, alpha)
+    if not forecasts:
+        raise ValueError(
+            "No forecasts could be generated. "
+            + "; ".join(f"{k}: {v}" for k, v in failures.items())
+        )
 
-        elif modelType == 'theta':
-            (mean_series, ci_lower, ci_upper) = get_theta_forecasts(model, steps, alpha)
-
-        else:
-            continue
-            # raise ValueError(f"Unsupported demand model type: '{modelType}'")
-
-        forecast_data = []
-        
-        # Append forecasted periods
-        for i in range(steps):
-            date_str = str(mean_series.index[i].date())
-            mean_val = float(mean_series.iloc[i])
-            lower_val = float(ci_lower.iloc[i])
-            upper_val = float(ci_upper.iloc[i])
-
-            forecast_data.append({
-                "date": date_str,
-                "historical": None,
-                "forecast": round(mean_val, 2),
-                "ci_lower": round(lower_val, 2),
-                "ci_upper": round(upper_val, 2),
-            })
-
-        forecast_maps[modelType] = forecast_data
-    
-    return forecast_maps
+    return {"forecasts": forecasts, "failures": failures}
 
 # Confidence interval helpers for scope separation
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { CsvLoadInputs, ErrorMessage, ForecastParameters, ForecastResults, ModelResults, SuccessResult } from '../types';
+import type { CsvLoadInputs, ErrorMessage, ForecastParameters, ForecastResponse, ModelResults, SuccessResult } from '../types';
 
 interface PyFunctionProps {
   fnName: string;
@@ -139,8 +139,8 @@ export function usePyodide() {
 
   // 4. Public API: Reactive Forecast Horizon Update
   const updateForecasts = useCallback(
-    async ({steps, alpha}: ForecastParameters): Promise<SuccessResult<ForecastResults> | ErrorMessage> => {
-      return await callPyFunction<ForecastResults>({
+    async ({steps, alpha}: ForecastParameters): Promise<SuccessResult<ForecastResponse> | ErrorMessage> => {
+      return await callPyFunction<ForecastResponse>({
         fnName: 'generate_forecasts',
         args: [steps, alpha],
       });
@@ -149,6 +149,8 @@ export function usePyodide() {
 
   return { isLoading, initError, fitModels, updateForecasts };
 }
+
+// Helper functions
 
 async function fetchText(url: string): Promise<string> {
   const res = await fetch(url);

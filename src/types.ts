@@ -86,6 +86,11 @@ export interface ModelMetrics {
 
 export type ForecastResults = Record<ModelType, Array<DemandProps>>;
 
+export interface ForecastResponse {
+  forecasts: ForecastResults;
+  failures: Partial<Record<ModelType, string>>;
+}
+
 export interface ModelResults {
   data: Array<DemandProps>;
   metrics: {
@@ -99,6 +104,15 @@ export interface ModelResults {
     theta: string;
   }
 }
+
+export type FailureKind = 'fit' | 'forecast';
+
+interface ModelFailure {
+  type: FailureKind;
+  message: string;
+}
+
+export type ModelFailures = Partial<Record<ModelType, ModelFailure>>;
 
 export type ForecastHorizonKeys = Exclude<keyof ForecastChartInputs, 'alpha' | 'csvInputs'>;
 

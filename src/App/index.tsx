@@ -20,7 +20,7 @@ import { adjustHistory, convertChartData, reshapeRows, shallowEqual } from '../u
 
 import './styles.css'
 
-import { modelNameMap } from '../types';
+import { MODEL_TYPES, modelNameMap } from '../types';
 import type {
   CardInputs,
   CsvCustomInputs,
@@ -30,10 +30,12 @@ import type {
   ForecastHorizonKeys,
   ForecastParameters,
   ForecastProps,
-  ForecastResults,
+  ForecastResponse,
+  FailureKind,
+  ModelFailures,
   ModelMetrics,
   ModelType,
-  OverlayChartData 
+  OverlayChartData
 } from '../types';
 
 type SampleDataKey = 'RSXFSN' | 'RSAFSNA' | 'ECOMPCTNSA' | 'custom';
@@ -65,6 +67,15 @@ const DEFAULT_ALPHA = 0.05;
 
 const nextPaint = () => new Promise<void>((r) => requestAnimationFrame(() => setTimeout(r, 0)));
 
+function tagFailures(
+  failures: Partial<Record<ModelType, string>>,
+  type: FailureKind
+): ModelFailures {
+  return Object.fromEntries(
+    Object.entries(failures).map(([model, message]) => [model, { type, message }])
+  ) as ModelFailures;
+}
+
 export default function App() {
   // UI states
   const hasFetchedRef = useRef(false);
@@ -95,7 +106,8 @@ export default function App() {
   const [fullAdjustedHistory, setFullAdjustedHistory] = useState<Array<OverlayChartData> | null>(null);
   const [forecastData, setForecastData] = useState<Array<OverlayChartData> | null>(null);
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
-  const [modelFailures, setModelFailures] = useState<Partial<Record<ModelType, string>>>({});
+  const [fitFailures, setFitFailures] = useState<Partial<Record<ModelType, string>>>({});
+  const [forecastFailures, setForecastFailures] = useState<Partial<Record<ModelType, string>>>({});
 
   const timeHorizonCards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
@@ -146,7 +158,13 @@ export default function App() {
     [modelFitInputs, activeModelInputs]
   );
 
-  const availableModels =  Object.keys(metricsMap) as ModelType[];
+  const modelFailures: ModelFailures = {
+    ...tagFailures(fitFailures, 'fit'),
+    ...tagFailures(forecastFailures, 'forecast'),
+  };
+
+  const failedModels = Object.keys(modelFailures) as ModelType[];
+  const availableModels = MODEL_TYPES.filter((m) => !failedModels.includes(m));
   const activeModel = availableModels.includes(selectedModel)
     ? selectedModel
     : availableModels[0] ?? selectedModel;
@@ -176,8 +194,8 @@ export default function App() {
     // Both succeeded: commit everything in one render
     setFullAdjustedHistory(adjustHistory(modelResponse.result.data));
     setMetricsMap(modelResponse.result.metrics ?? {});
-    setModelFailures(modelResponse.result.failures ?? {});
-    updateChartData(forecastResponse.result);
+    setFitFailures(modelResponse.result.failures);
+    applyForecast(forecastResponse.result);
     setActiveModelInputs(csvInputs);
   }
 
@@ -192,13 +210,13 @@ export default function App() {
       return;
     }
     
-    updateChartData(forecastResponse.result);
+    applyForecast(forecastResponse.result);
   }
 
-  const updateChartData = (forecastResults: ForecastResults): void => {
-    const reshaped = reshapeRows(forecastResults);
-    setForecastData(reshaped);
-  }
+  const applyForecast = (result: ForecastResponse) => {
+    setForecastData(reshapeRows(result.forecasts));
+    setForecastFailures(result.failures);
+  };
 
   const handleRun = async () => {
     if (!inputsValid) return; 

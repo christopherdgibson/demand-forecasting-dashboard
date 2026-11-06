@@ -2,14 +2,14 @@ import { useEffect, useRef, useState } from 'react';
 
 import '../App/styles.css';
 import { MODEL_TYPES, modelNameMap } from '../types';
-import type {CardInputs, ControlsBase, ForecastChartInputs, ForecastHorizonKeys, ModelType } from '../types';
+import type {CardInputs, ControlsBase, ForecastChartInputs, ForecastHorizonKeys, ModelFailures, ModelType } from '../types';
 
 interface ControlsProps extends ControlsBase {
   inputs: ForecastChartInputs;
   timeHorizonCards: Record<ForecastHorizonKeys, CardInputs>;
   selectedModel: ModelType;
   activeModel: ModelType;
-  modelFailures: Partial<Record<ModelType, string>>;
+  modelFailures: ModelFailures;
   onModelChange: (updatedParams: ModelType) => void;
   onHistoryChange: (newPeriods: number) => void;
   onForecastChange: (updatedParams: ForecastChartInputs) => void;
@@ -30,11 +30,15 @@ const alphaCard = {
   title: 'Confidence Interval (α)',
   hint: "0.01 - 1.0",
   min: 0.01,
-  max: 1,
+  max: 1 - 0.01,
   step: 0.01
 }
 
-export function ControlPanel({inputs, timeHorizonCards, selectedModel, activeModel, modelFailures, onModelChange, onHistoryChange, onForecastChange, badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", isRunning, isLoading}: ControlsProps) {
+export function ControlPanel({inputs, timeHorizonCards, selectedModel, activeModel, modelFailures, 
+  onModelChange, onHistoryChange, onForecastChange, 
+  badgeLabel = "Demand Forecast", stepLabel = "Forecast Steps", 
+  isRunning, isLoading}: ControlsProps)
+{
   const failedModels = Object.keys(modelFailures) as ModelType[];
 
   const handleInputsChange = <F extends keyof ForecastChartInputs> (
@@ -84,7 +88,7 @@ export function ControlPanel({inputs, timeHorizonCards, selectedModel, activeMod
               const failed = failedModels.includes(m);
               return (
                 <option key={m} value={m} disabled={failed}
-                  title={failed && modelFailures ? modelFailures[m] : undefined}>
+                  title={failed && modelFailures ? modelFailures[m]?.message : undefined}>
                   {modelNameMap[m]}{failed ? ' (unavailable)' : ''}
                 </option>
               );
@@ -93,7 +97,13 @@ export function ControlPanel({inputs, timeHorizonCards, selectedModel, activeMod
 
           {failedModels.length > 0 && (
             <p id="model-note" className="field-note" role="status">
-              {failedModels.map((m) => `${modelNameMap[m]} couldn't be fitted to this data.`).join(' ')}
+              {failedModels
+                .map((m) =>
+                  modelFailures[m]?.type === 'fit'
+                    ? `${modelNameMap[m]} couldn't be fitted to this data.`
+                    : `Forecasts could not be produced for ${modelNameMap[m]}.`
+                )
+                .join(' ')}
               {activeModel !== selectedModel && ` Showing ${modelNameMap[activeModel]} instead.`}
             </p>
           )}

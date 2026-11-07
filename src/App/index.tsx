@@ -25,6 +25,7 @@ import type {
   CardInputs,
   CsvCustomInputs,
   CsvLoadInputs,
+  DataNote,
   ErrorMessage,
   ForecastChartInputs,
   ForecastHorizonKeys,
@@ -108,6 +109,7 @@ export default function App() {
   const [metricsMap, setMetricsMap] = useState<Record<string, ModelMetrics>>({});
   const [fitFailures, setFitFailures] = useState<Partial<Record<ModelType, string>>>({});
   const [forecastFailures, setForecastFailures] = useState<Partial<Record<ModelType, string>>>({});
+  const [dataNotes, setDataNotes] = useState<DataNote[]>([]);
 
   const timeHorizonCards: Record<ForecastHorizonKeys, CardInputs> = {
     history: {
@@ -193,6 +195,7 @@ export default function App() {
 
     // Both succeeded: commit everything in one render
     setFullAdjustedHistory(adjustHistory(modelResponse.result.data));
+    setDataNotes(modelResponse.result.notes ?? []);
     setMetricsMap(modelResponse.result.metrics ?? {});
     setFitFailures(modelResponse.result.failures);
     applyForecast(forecastResponse.result);
@@ -421,6 +424,18 @@ export default function App() {
               Show All
             </button>
           </div>
+
+          {/* Data notes (e.g., truncation warnings) */}
+          {dataNotes.length > 0 && (
+            <ul className="data-notes" role="status">
+              {dataNotes.map((n) => (
+                <li key={n.code} className="data-note">
+                  <span className="data-note__icon" aria-hidden="true">ⓘ</span>
+                  <span>{n.message}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
           {/* Tab 1: Demand Forecast */}
           <div className='active-forecast'>                  

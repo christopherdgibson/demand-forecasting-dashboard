@@ -15,7 +15,8 @@ export interface CsvLoadInputs {
   delimiter?: string;
   dateCol: string;
   targetCol: string;
-  freq: string
+  freq: string;
+  trimPartial?: boolean;
 }
 
 export interface CsvCustomInputs extends CsvLoadInputs {
@@ -42,6 +43,11 @@ export interface CardInputs {
   min?: number;
   max?: number;
   step?: number;
+}
+
+export interface DataNote {
+  code: string;
+  message: string;
 }
 
 export interface ErrorMessage {
@@ -102,7 +108,8 @@ export interface ModelResults {
     ets: string;
     sarimax: string;
     theta: string;
-  }
+  },
+  notes: Array<DataNote>;
 }
 
 export type FailureKind = 'fit' | 'forecast';

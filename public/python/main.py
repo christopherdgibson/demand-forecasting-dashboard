@@ -29,7 +29,8 @@ def load_and_prepare_dataset(
     delimiter: str = ',',
     date_col: str = 'observation_date',
     target_col: str = 'RSXFSN',
-    freq: str = 'MS'):
+    freq: str = 'MS',
+    trim_partial: bool = False):
     """
     Unified pipeline for built-in files and user uploads.
     Standardizes columns to 'date' and 'historical' and resamples to `freq`.
@@ -68,15 +69,27 @@ def load_and_prepare_dataset(
         raise ValueError(
             "No valid rows after parsing. Check the date and target columns and the date format."
         )
-    
+
+    first_partial, last_partial = incomplete_edges(df.index, freq)
+
     # 5. Resampling and gap filling (DatetimeIndex stays active)
     # Or: sum(min_count=1) leaves empty periods as NaN so that ffill() carries the last value forward.
     # df = df[['historical']].resample(freq).sum(min_count=1).ffill()
     df = df[['historical']].resample(freq).sum()
+    notes = []
+    if first_partial:
+        notes.append(partial_note('first', df.index[0], trim_partial))
+        if trim_partial:
+            df = df.iloc[1:]
+    if last_partial:
+        notes.append(partial_note('last', df.index[-1], trim_partial))
+        if trim_partial:
+            df = df.iloc[:-1]
 
     if len(df) < 3:
         raise ValueError("At least 3 periods of data are needed after resampling to the chosen frequency.")
-    
+
+    return df, notes
 
     # 6. Format back into a clean structure for the frontend
     # result_df = df.reset_index()
@@ -88,18 +101,48 @@ def load_and_prepare_dataset(
     # Convert to standard Python records (list of dicts) for Pyodide to pass back to JS
     # return result_df.to_dict(orient='records')
 
-    return df
+PERIOD_ALIAS = {'YS': 'Y', 'QS': 'Q', 'MS': 'M', 'W': 'W', 'D': 'D'}
+
+def incomplete_edges(raw_index: pd.DatetimeIndex, freq: str) -> tuple[bool, bool]:
+    """Whether the first / last period covers less than a full calendar period."""
+    if len(raw_index) < 3 or freq not in PERIOD_ALIAS:
+        return False, False
+
+    periods = raw_index.to_period(PERIOD_ALIAS[freq])
+    if periods.nunique() == len(raw_index):          # one row per period: nothing aggregated
+        return False, False
+
+    diffs = raw_index.to_series().diff().dropna()
+    step = diffs.median()
+    if diffs.std() > 0.5 * step:                     # irregular (event-level) data: can't tell
+        return False, False
+
+    tolerance = 1.5 * step
+    first_partial = (raw_index[0] - periods[0].start_time) > tolerance
+    last_partial = (periods[-1].end_time - raw_index[-1]) > tolerance
+    print('periods[-1].end_time - raw_index[-1]:', periods[-1].end_time - raw_index[-1])
+    return first_partial, last_partial
+
+def partial_note(side: str, period_start, trimmed: bool) -> dict:
+    label = period_start.strftime('%Y-%m-%d')
+    message = (
+        f"The {side} period ({label}) was incomplete and has been excluded."
+        if trimmed else
+        f"The {side} period ({label}) may be incomplete, which can skew the forecast."
+    )
+    return {"code": f"partial_{side}", "message": message}
     
 # Fetch public dataset (e.g., FRED US Retail Sales)
 # url = "https://fred.stlouisfed.org/graph/fredgraph.csv?id=RSXFSN"
-def fit_models(source, 
-    is_string: bool = False, 
+def fit_models(source,
+    is_string: bool = False,
     delimiter: str = ',',
-    date_col: str = 'observation_date', 
-    target_col: str = 'RSXFSN', 
-    freq: str = 'MS'):
+    date_col: str = 'observation_date',
+    target_col: str = 'RSXFSN',
+    freq: str = 'MS',
+    trim_partial: bool = False):
     """Runs data loading and model fitting (Expensive step — run once)."""
-    df = load_and_prepare_dataset(source, is_string, delimiter, date_col, target_col, freq)
+    df, notes = load_and_prepare_dataset(source, is_string, delimiter, date_col, target_col, freq, trim_partial)
 
     actuals = df['historical']
 
@@ -191,7 +234,8 @@ def fit_models(source,
     return {
         "data": historical_data,
         "metrics": metrics,
-        "failures": failures
+        "failures": failures,
+        "notes": notes
     }
 
 def generate_forecasts(forecast_steps=12, alpha=0.05):

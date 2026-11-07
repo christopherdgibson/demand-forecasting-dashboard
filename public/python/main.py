@@ -24,47 +24,59 @@ def series_to_frontend_records(series: pd.Series) -> list[dict]:
     return df.to_dict(orient='records')
 
 def load_and_prepare_dataset(
-    source, 
-    is_string: bool = False, 
+    source,
+    is_string: bool = False,
     delimiter: str = ',',
-    date_col: str = 'observation_date', 
-    target_col: str = 'RSXFSN', 
+    date_col: str = 'observation_date',
+    target_col: str = 'RSXFSN',
     freq: str = 'MS'):
     """
     Unified pipeline for built-in files and user uploads.
-    Standardizes columns to 'date' and 'historical', resamples, and returns records.
+    Standardizes columns to 'date' and 'historical' and resamples to `freq`.
     """
-    # 1. Ingestion (File path vs. uploaded CSV string)
+    if date_col == target_col:
+        raise ValueError("The date and target columns must be different.")
+
+    # 1. Ingestion (file path vs. uploaded CSV string)
     if is_string:
-        df = pd.read_csv(io.StringIO(source), sep=delimiter, engine='python')
+        df = pd.read_csv(io.StringIO(source), sep=delimiter or ',')
     else:
         df = pd.read_csv(source)
-    
-    # 2. Date Parsing & Chronological Sorting (Ensures time-series sequence)
-    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
 
+    # Match the header cleaning done in the browser, then check the columns exist
+    df.columns = df.columns.astype(str).str.strip()
+    if date_col not in df.columns:
+        raise ValueError(f"Date column '{date_col}' not found in dataset.")
+    if target_col not in df.columns:
+        raise ValueError(f"Target column '{target_col}' not found in dataset.")
+
+    # 2. Date parsing & chronological sorting
+    df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
     df = df.rename(columns={date_col: 'date'})
-    df = df.dropna(subset='date')
+    df = df.dropna(subset=['date'])
     df = df.sort_values(by='date')
     df.set_index('date', inplace=True)
-    
-    # 3. Handle Target Column Mapping
-    if target_col != 'historical':
-        if target_col in df.columns:
-            df = df.rename(columns={target_col: 'historical'})
-        elif 'sales' in df.columns:
-            df = df.rename(columns={'sales': 'historical'})
-        else:
-            raise ValueError(f"Target column '{target_col}' not found in dataset.")
 
-    # 4. Numeric Enforcement & NaN Dropping
+    # 3. Target column mapping
+    if target_col != 'historical':
+        df = df.rename(columns={target_col: 'historical'})
+
+    # 4. Numeric enforcement & NaN dropping
     df['historical'] = pd.to_numeric(df['historical'], errors='coerce')
     df = df.dropna(subset=['historical'])
+    if df.empty:
+        raise ValueError(
+            "No valid rows after parsing. Check the date and target columns and the date format."
+        )
     
-    # 5. Resampling, Aggregation, & Gap Filling (DatetimeIndex stays active)
-    # Uses .sum() for data grouping and .ffill().fillna(0) for missing periods
-    # df = df.asfreq(freq)
-    df = df[['historical']].resample(freq).sum().ffill().fillna(0)
+    # 5. Resampling and gap filling (DatetimeIndex stays active)
+    # Or: sum(min_count=1) leaves empty periods as NaN so that ffill() carries the last value forward.
+    # df = df[['historical']].resample(freq).sum(min_count=1).ffill()
+    df = df[['historical']].resample(freq).sum()
+
+    if len(df) < 3:
+        raise ValueError("At least 3 periods of data are needed after resampling to the chosen frequency.")
+    
 
     # 6. Format back into a clean structure for the frontend
     # result_df = df.reset_index()
